@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Download, PieChart, Building2, TrendingUp, Users, DollarSign, Loader2 } from "lucide-react"
+import { BarChart3, Download, PieChart, Building2, TrendingUp, Users, Loader2 } from "lucide-react" // Removed DollarSign
 import Link from "next/link"
 import { umkmService } from "@/lib/db"
 import { useAuth } from "@/lib/auth"
@@ -13,14 +13,16 @@ export default function Laporan() {
     totalUMKM: 0,
     umkmAktif: 0,
     umkmTidakAktif: 0,
-    totalRAB: 0,
-    totalModal: 0,
+    // Removed financial stats:
+    // totalRAB: 0,
+    // totalModal: 0,
     totalKaryawan: 0,
     umkmJenisStats: {} as Record<string, number>,
     kategoriStats: {} as Record<string, number>,
     statusStats: {} as Record<string, number>,
-    avgRAB: 0,
-    avgModal: 0,
+    // Removed financial averages:
+    // avgRAB: 0,
+    // avgModal: 0,
     avgKaryawan: 0,
   })
   const [loading, setLoading] = useState(true)
@@ -44,8 +46,9 @@ export default function Laporan() {
 
       const umkmAktif = umkm.filter((u) => u.status === "Aktif").length
       const umkmTidakAktif = umkm.filter((u) => u.status !== "Aktif").length
-      const totalRAB = umkm.reduce((sum, u) => sum + (u.rab || 0), 0)
-      const totalModal = umkm.reduce((sum, u) => sum + (u.modal_awal || 0), 0)
+      // Removed financial calculations:
+      // const totalRAB = umkm.reduce((sum, u) => sum + (u.rab || 0), 0)
+      // const totalModal = umkm.reduce((sum, u) => sum + (u.modal_awal || 0), 0)
       const totalKaryawan = umkm.reduce((sum, u) => sum + (u.jumlah_karyawan || 0), 0)
 
       const umkmJenisStats = umkm.reduce((acc: Record<string, number>, u) => {
@@ -73,14 +76,16 @@ export default function Laporan() {
         totalUMKM: umkm.length,
         umkmAktif,
         umkmTidakAktif,
-        totalRAB,
-        totalModal,
+        // Removed financial stats:
+        // totalRAB,
+        // totalModal,
         totalKaryawan,
         umkmJenisStats,
         kategoriStats,
         statusStats,
-        avgRAB: umkm.length > 0 ? totalRAB / umkm.length : 0,
-        avgModal: umkm.length > 0 ? totalModal / umkm.length : 0,
+        // Removed financial averages:
+        // avgRAB: umkm.length > 0 ? totalRAB / umkm.length : 0,
+        // avgModal: umkm.length > 0 ? totalModal / umkm.length : 0,
         avgKaryawan: umkm.length > 0 ? totalKaryawan / umkm.length : 0,
       })
     } catch (error) {
@@ -101,12 +106,6 @@ RINGKASAN UMKM:
 - Total UMKM: ${stats.totalUMKM} usaha
 - UMKM Aktif: ${stats.umkmAktif} usaha (${stats.totalUMKM > 0 ? Math.round((stats.umkmAktif / stats.totalUMKM) * 100) : 0}%)
 - UMKM Tidak Aktif: ${stats.umkmTidakAktif} usaha (${stats.totalUMKM > 0 ? Math.round((stats.umkmTidakAktif / stats.totalUMKM) * 100) : 0}%)
-
-STATISTIK KEUANGAN:
-- Total RAB: Rp ${stats.totalRAB.toLocaleString("id-ID")}
-- Total Modal: Rp ${stats.totalModal.toLocaleString("id-ID")}
-- Rata-rata RAB per UMKM: Rp ${Math.round(stats.avgRAB).toLocaleString("id-ID")}
-- Rata-rata Modal per UMKM: Rp ${Math.round(stats.avgModal).toLocaleString("id-ID")}
 
 PENYERAPAN TENAGA KERJA:
 - Total Karyawan: ${stats.totalKaryawan} orang
@@ -211,7 +210,9 @@ Laporan ini dibuat oleh Sistem Pendataan UMKM RT/RW
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {" "}
+          {/* Changed from 4 to 3 columns */}
           <Card className="bg-card shadow-lg border border-border rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total UMKM</CardTitle>
@@ -222,7 +223,6 @@ Laporan ini dibuat oleh Sistem Pendataan UMKM RT/RW
               <p className="text-xs text-muted-foreground mt-1">Usaha terdaftar</p>
             </CardContent>
           </Card>
-
           <Card className="bg-card shadow-lg border border-border rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">UMKM Aktif</CardTitle>
@@ -235,7 +235,8 @@ Laporan ini dibuat oleh Sistem Pendataan UMKM RT/RW
               </p>
             </CardContent>
           </Card>
-
+          {/* Removed Total Investasi Card */}
+          {/*
           <Card className="bg-card shadow-lg border border-border rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Investasi</CardTitle>
@@ -248,7 +249,7 @@ Laporan ini dibuat oleh Sistem Pendataan UMKM RT/RW
               <p className="text-xs text-muted-foreground mt-1">Rupiah modal</p>
             </CardContent>
           </Card>
-
+          */}
           <Card className="bg-card shadow-lg border border-border rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Tenaga Kerja</CardTitle>
@@ -343,6 +344,8 @@ Laporan ini dibuat oleh Sistem Pendataan UMKM RT/RW
           </Card>
         </div>
 
+        {/* Removed financial analysis cards */}
+        {/*
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <Card className="bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg border-0 rounded-2xl">
             <CardHeader>
@@ -376,7 +379,7 @@ Laporan ini dibuat oleh Sistem Pendataan UMKM RT/RW
                 </div>
                 <div>
                   <p className="text-green-100 text-sm">Rata-rata Modal per UMKM</p>
-                  <p className="text-lg font-semibold">Rp {(stats.avgModal / 1000000).toFixed(1)}M</p>
+                  <p className="text-lg font-semibold">Rp {(stats.totalModal / 1000000).toFixed(1)}M</p>
                 </div>
               </div>
             </CardContent>
@@ -401,6 +404,7 @@ Laporan ini dibuat oleh Sistem Pendataan UMKM RT/RW
             </CardContent>
           </Card>
         </div>
+        */}
 
         {Object.keys(stats.kategoriStats).length > 0 && (
           <Card className="bg-card shadow-lg border border-border rounded-xl">
