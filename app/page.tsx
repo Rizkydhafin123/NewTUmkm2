@@ -1,281 +1,230 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { umkmService } from "@/lib/db"
+import { useUser } from "@/lib/hooks/use-user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, Download, Building2, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { umkmService, type UMKM } from "@/lib/db"
-import { ProtectedRoute } from "@/components/protected-route"
 import { HeaderWithAuth } from "@/components/header-with-auth"
 import { NavigationWithAuth } from "@/components/navigation-with-auth"
-import { useAuth } from "@/lib/auth"
+import { Loader2, Search, Edit, Trash, Download, Plus } from "lucide-react"
+import Link from "next/link"
 
-function DataUMKMContent() {
-  const [umkm, setUmkm] = useState<UMKM[]>([])
-  const [filteredUmkm, setFilteredUmkm] = useState<UMKM[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterJenis, setFilterJenis] = useState("semua")
-  const [filterStatus, setFilterStatus] = useState("semua")
+export default function UMKMPage() {
+  const router = useRouter()
+  const { user, isLoading: isUserLoading } = useUser()
+  const [umkmList, setUmkmList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterJenis, setFilterJenis] = useState("Semua Jenis")
+  const [filterStatus, setFilterStatus] = useState("Semua Status")
 
   useEffect(() => {
-    loadUMKM()
-  }, [user])
+    async function fetchUmkm() {
+      if (isUserLoading) return
 
-  useEffect(() => {
-    let filtered = umkm.filter(
-      (u) =>
-        u.nama_usaha.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.pemilik.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.jenis_usaha.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.no_hp && u.no_hp.includes(searchTerm)),
-    )
-
-    if (filterJenis !== "semua") {
-      filtered = filtered.filter((u) => u.jenis_usaha === filterJenis)
-    }
-
-    if (filterStatus !== "semua") {
-      filtered = filtered.filter((u) => u.status === filterStatus)
-    }
-
-    setFilteredUmkm(filtered)
-  }, [umkm, searchTerm, filterJenis, filterStatus])
-
-  const loadUMKM = async () => {
-    try {
       setLoading(true)
-
-      let data: UMKM[] = []
-
-      if (user?.role === "admin") {
-        data = await umkmService.getAll(undefined, user.rw)
-      } else {
-        data = await umkmService.getAll(user?.id)
+      setError(null)
+      try {
+        let data: any[] = []
+        if (user?.role === "admin") {
+          // Admin melihat semua UMKM di RW-nya
+          console.log(`Fetching all UMKM for admin in RW: ${user.rw}`)
+          data = await umkmService.getAll(undefined, user.rw)
+        } else if (user?.id) {
+          // User biasa hanya melihat UMKM miliknya
+          console.log(`Fetching UMKM for user ID: ${user.id}`)
+          data = await umkmService.getAll(user.id)
+        } else {
+          setError("Pengguna tidak terautentikasi atau data pengguna tidak lengkap.")
+          console.error("User not authenticated or user data incomplete.")
+          setLoading(false)
+          return
+        }
+        setUmkmList(data)
+        console.log("UMKM data fetched:", data)
+      } catch (err) {
+        console.error("Error fetching UMKM:", err)
+        setError("Gagal memuat data UMKM. Silakan coba lagi.")
+      } finally {
+        setLoading(false)
       }
-
-      setUmkm(data)
-      setFilteredUmkm(data)
-    } catch (error) {
-      console.error("Error loading UMKM:", error)
-    } finally {
-      setLoading(false)
     }
-  }
+
+    fetchUmkm()
+  }, [user, isUserLoading])
+
+  const filteredUmkm = umkmList.filter((umkm) => {
+    const matchesSearch =
+      umkm.nama_usaha?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      umkm.pemilik?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      umkm.jenis_usaha?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      umkm.nomor_hp?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesJenis = filterJenis === "Semua Jenis" || umkm.jenis_usaha === filterJenis
+
+    const matchesStatus = filterStatus === "Semua Status" || umkm.status === filterStatus
+
+    return matchesSearch && matchesJenis && matchesStatus
+  })
 
   const handleDelete = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus data UMKM ini?")) {
-      try {
-        if (user?.role === "admin") {
-          const umkmToDelete = umkm.find((u) => u.id === id)
-          if (umkmToDelete?.user_id) {
-            await umkmService.delete(id, umkmToDelete.user_id)
-          }
-        } else {
-          await umkmService.delete(id, user?.id || "")
-        }
-        await loadUMKM()
-        alert("Data UMKM berhasil dihapus!")
-      } catch (error) {
-        console.error("Error deleting UMKM:", error)
-        alert("Gagal menghapus data UMKM. Silakan coba lagi.")
-      }
+    if (!confirm("Apakah Anda yakin ingin menghapus UMKM ini?")) {
+      return
+    }
+    try {
+      await umkmService.remove(id)
+      setUmkmList(umkmList.filter((umkm) => umkm.id !== id))
+      alert("UMKM berhasil dihapus!")
+    } catch (err) {
+      console.error("Error deleting UMKM:", err)
+      alert("Gagal menghapus UMKM. Silakan coba lagi.")
     }
   }
 
-  const exportToCSV = () => {
-    const headers = ["Nama Usaha", "Pemilik", "Jenis Usaha", "Nomor HP", "Status"]
-    const csvContent = [
-      headers.join(","),
-      ...filteredUmkm.map((u) => [u.nama_usaha, u.pemilik, u.jenis_usaha, u.no_hp || "", u.status].join(",")),
-    ].join("\n")
-
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `data-umkm-${user?.role === "admin" ? `rw-${user.rw}` : "user"}-${new Date().toISOString().split("T")[0]}.csv`
-    a.click()
-  }
-
-  if (loading) {
+  if (isUserLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Memuat data UMKM...</p>
-        </div>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Memuat data...</span>
       </div>
     )
   }
 
+  if (error) {
+    return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      <HeaderWithAuth
-        title={`Kelola Data UMKM ${user?.role === "admin" ? `RW ${user.rw}` : ""}`}
-        description={`Manajemen lengkap data UMKM mikro ${user?.role === "admin" ? `di RW ${user.rw}` : "di wilayah Anda"}`}
-      >
-        <Button
-          variant="outline"
-          onClick={exportToCSV}
-          className="border-border bg-transparent rounded-lg hover:bg-muted"
-        >
+      <HeaderWithAuth title="Kelola Data UMKM" description="Manajemen lengkap data UMKM mikro di wilayah Anda">
+        <Button variant="outline" className="rounded-lg border-border hover:bg-muted bg-transparent">
           <Download className="h-4 w-4 mr-2" />
           Export Data
         </Button>
-        <Button size="lg" asChild className="bg-primary hover:bg-primary/90 rounded-lg">
+        <Button asChild className="rounded-lg">
           <Link href="/umkm/tambah">
-            <Plus className="h-5 w-5 mr-2" />
+            <Plus className="h-4 w-4 mr-2" />
             Tambah UMKM
           </Link>
         </Button>
       </HeaderWithAuth>
-
       <NavigationWithAuth />
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="bg-card shadow-lg border border-border rounded-xl">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-xl text-foreground">Daftar UMKM Terdaftar</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Kelola dan pantau semua UMKM mikro di wilayah Anda
-            </CardDescription>
+            <CardTitle>Daftar UMKM Terdaftar</CardTitle>
+            <CardDescription>Kelola dan pantau semua UMKM mikro di wilayah Anda</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Cari nama usaha, pemilik, jenis usaha, atau nomor HP..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-border focus:border-primary focus:ring-primary rounded-lg"
+                  className="w-full pl-8"
                 />
               </div>
               <Select value={filterJenis} onValueChange={setFilterJenis}>
-                <SelectTrigger className="w-48 border-border rounded-lg">
-                  <SelectValue placeholder="Filter Jenis Usaha" />
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Semua Jenis" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="semua">Semua Jenis</SelectItem>
+                  <SelectItem value="Semua Jenis">Semua Jenis</SelectItem>
                   <SelectItem value="Kuliner">Kuliner</SelectItem>
                   <SelectItem value="Fashion">Fashion</SelectItem>
                   <SelectItem value="Kerajinan">Kerajinan</SelectItem>
                   <SelectItem value="Jasa">Jasa</SelectItem>
-                  <SelectItem value="Perdagangan">Perdagangan</SelectItem>
-                  <SelectItem value="Teknologi">Teknologi</SelectItem>
+                  <SelectItem value="Otomotif">Otomotif</SelectItem>
+                  <SelectItem value="Lainnya">Lainnya</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-48 border-border rounded-lg">
-                  <SelectValue placeholder="Filter Status" />
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Semua Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="semua">Semua Status</SelectItem>
+                  <SelectItem value="Semua Status">Semua Status</SelectItem>
                   <SelectItem value="Aktif">Aktif</SelectItem>
                   <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                  <SelectItem value="Tutup Sementara">Tutup Sementara</SelectItem>
+                  <SelectItem value="Dalam Proses">Dalam Proses</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="rounded-lg border border-border overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama Usaha</TableHead>
+                  <TableHead>Pemilik</TableHead>
+                  <TableHead>Jenis Usaha</TableHead>
+                  <TableHead>Nomor HP</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUmkm.length === 0 ? (
                   <TableRow>
-                    <TableHead className="font-semibold text-foreground">Nama Usaha</TableHead>
-                    <TableHead className="font-semibold text-foreground">Pemilik</TableHead>
-                    <TableHead className="font-semibold text-foreground">Jenis Usaha</TableHead>
-                    <TableHead className="font-semibold text-foreground">Nomor HP</TableHead>
-                    <TableHead className="font-semibold text-foreground">Status</TableHead>
-                    <TableHead className="font-semibold text-foreground">Aksi</TableHead>
+                    <TableCell colSpan={6} className="text-center py-4">
+                      Tidak ada data UMKM yang ditemukan.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUmkm.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12">
-                        <Building2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                        <p className="text-muted-foreground text-lg">Tidak ada data UMKM</p>
-                        <p className="text-muted-foreground/80 text-sm mt-1">Mulai dengan mendaftarkan UMKM pertama</p>
+                ) : (
+                  filteredUmkm.map((umkm) => (
+                    <TableRow key={umkm.id}>
+                      <TableCell className="font-medium">{umkm.nama_usaha}</TableCell>
+                      <TableCell>{umkm.pemilik}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                          {umkm.jenis_usaha}
+                        </span>
+                      </TableCell>
+                      <TableCell>{umkm.nomor_hp || "-"}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                            umkm.status === "Aktif"
+                              ? "bg-green-50 text-green-700 ring-green-600/20"
+                              : umkm.status === "Tidak Aktif"
+                                ? "bg-red-50 text-red-700 ring-red-600/20"
+                                : "bg-yellow-50 text-yellow-700 ring-yellow-600/20"
+                          }`}
+                        >
+                          {umkm.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="flex justify-center gap-2">
+                        <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent" asChild>
+                          <Link href={`/umkm/edit/${umkm.id}`}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDelete(umkm.id)}
+                        >
+                          <Trash className="h-4 w-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredUmkm.map((u) => (
-                      <TableRow key={u.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium text-foreground">{u.nama_usaha}</TableCell>
-                        <TableCell className="text-muted-foreground">{u.pemilik}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-primary/20 text-primary bg-primary/10 rounded-md">
-                            {u.jenis_usaha}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{u.no_hp || "-"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              u.status === "Aktif"
-                                ? "default"
-                                : u.status === "Tidak Aktif"
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                            className={
-                              u.status === "Aktif"
-                                ? "bg-green-100 text-green-800 border-green-200 rounded-md"
-                                : u.status === "Tidak Aktif"
-                                  ? "bg-destructive/10 text-destructive border-destructive/20 rounded-md"
-                                  : "bg-muted text-muted-foreground border-border rounded-md"
-                            }
-                          >
-                            {u.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              asChild
-                              className="border-border hover:bg-muted bg-transparent rounded-lg"
-                            >
-                              <Link href={`/umkm/edit/${u.id}`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(u.id!)}
-                              className="text-destructive hover:text-destructive/90 border-destructive/20 hover:bg-destructive/5 rounded-lg"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </main>
     </div>
-  )
-}
-
-export default function DataUMKM() {
-  return (
-    <ProtectedRoute>
-      <DataUMKMContent />
-    </ProtectedRoute>
   )
 }
