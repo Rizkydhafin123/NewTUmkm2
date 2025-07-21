@@ -15,7 +15,7 @@ import { umkmService, type UMKM } from "@/lib/db"
 import { useAuth } from "@/lib/auth"
 
 interface EditUMKMClientProps {
-  umkmId: string
+  umkmId: string // umkmId diterima sebagai prop
 }
 
 export default function EditUMKMClient({ umkmId }: EditUMKMClientProps) {
@@ -29,20 +29,25 @@ export default function EditUMKMClient({ umkmId }: EditUMKMClientProps) {
   useEffect(() => {
     const loadUMKMData = async () => {
       if (!user) {
+        console.log("User not authenticated, redirecting to /login.")
         router.push("/login")
         return
       }
       setLoading(true)
       try {
-        const data = await umkmService.getById(umkmId, user.id)
+        const data = await umkmService.getById(umkmId, user.role === "admin" ? undefined : user.id)
         if (data) {
           setFormData(data)
         } else {
           setError("Data UMKM tidak ditemukan atau Anda tidak memiliki akses.")
+          console.log("UMKM data not found or no access, redirecting to /umkm.")
+          router.push("/umkm") // Redirect ke daftar UMKM jika data tidak ditemukan
         }
       } catch (err) {
         console.error("Error loading UMKM data:", err)
         setError("Gagal memuat data UMKM. Silakan coba lagi.")
+        console.log("Error loading UMKM data, redirecting to /umkm.")
+        router.push("/umkm") // Redirect ke daftar UMKM jika ada error saat memuat
       } finally {
         setLoading(false)
       }
@@ -79,9 +84,24 @@ export default function EditUMKMClient({ umkmId }: EditUMKMClientProps) {
     }
 
     try {
-      await umkmService.update(umkmId, formData, user.id)
-      // No alert here to allow smooth navigation
-      router.push("/umkm") // Redirect to UMKM list page
+      // Pastikan nilai numerik di-parse dengan benar
+      const updateData = {
+        ...formData,
+        kapasitas_produksi: formData.kapasitas_produksi ? Number(formData.kapasitas_produksi) : undefined,
+        periode_operasi: formData.periode_operasi ? Number(formData.periode_operasi) : undefined,
+        hari_kerja_per_minggu: formData.hari_kerja_per_minggu ? Number(formData.hari_kerja_per_minggu) : undefined,
+        total_produksi: formData.total_produksi ? Number(formData.total_produksi) : undefined,
+        rab: formData.rab ? Number(formData.rab) : undefined,
+        biaya_tetap: formData.biaya_tetap ? Number(formData.biaya_tetap) : undefined,
+        biaya_variabel: formData.biaya_variabel ? Number(formData.biaya_variabel) : undefined,
+        modal_awal: formData.modal_awal ? Number(formData.modal_awal) : undefined,
+        target_pendapatan: formData.target_pendapatan ? Number(formData.target_pendapatan) : undefined,
+        jumlah_karyawan: formData.jumlah_karyawan ? Number(formData.jumlah_karyawan) : undefined,
+      }
+
+      await umkmService.update(umkmId, updateData, user.role === "admin" ? formData.user_id! : user.id)
+      console.log("UMKM updated successfully. Redirecting to /umkm.") // Log ini akan muncul di konsol browser
+      router.push("/umkm") // Redirect ke halaman daftar UMKM
     } catch (err) {
       console.error("Error updating UMKM:", err)
       setError("Gagal memperbarui data UMKM. Silakan coba lagi.")
@@ -377,11 +397,16 @@ export default function EditUMKMClient({ umkmId }: EditUMKMClientProps) {
                   onChange={handleChange}
                 />
               </div>
-              <div className="col-span-full flex justify-end gap-4 mt-6">
-                <Button variant="outline" onClick={() => router.push("/umkm")} disabled={submitting}>
+              <div className="col-span-full flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/umkm")}
+                  disabled={submitting}
+                  className="w-full sm:w-auto order-2 sm:order-1"
+                >
                   Batal
                 </Button>
-                <Button type="submit" disabled={submitting}>
+                <Button type="submit" disabled={submitting} className="w-full sm:w-auto order-1 sm:order-2">
                   {submitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
