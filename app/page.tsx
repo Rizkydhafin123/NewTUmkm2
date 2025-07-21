@@ -3,105 +3,94 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, Download, Building2, Loader2 } from "lucide-react"
+import { Building2, Plus, TrendingUp, Users, DollarSign, BarChart3, PieChart, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { umkmService, type UMKM } from "@/lib/db"
+import { umkmService, hasNeon, type UMKM } from "@/lib/db"
+import { MigrationBanner } from "@/components/migration-banner"
+import { DebugPanel } from "@/components/debug-panel"
 import { ProtectedRoute } from "@/components/protected-route"
 import { HeaderWithAuth } from "@/components/header-with-auth"
 import { NavigationWithAuth } from "@/components/navigation-with-auth"
 import { useAuth } from "@/lib/auth"
 
-function DataUMKMContent() {
-  const [umkm, setUmkm] = useState<UMKM[]>([])
-  const [filteredUmkm, setFilteredUmkm] = useState<UMKM[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterJenis, setFilterJenis] = useState("semua")
-  const [filterStatus, setFilterStatus] = useState("semua")
-  const [loading, setLoading] = useState(true)
+const getRWFromUMKM = (umkm: UMKM): string | null => {
+  if (umkm.user_id) {
+    const users = JSON.parse(localStorage.getItem("registered_users") || "[]")
+    const user = users.find((u: any) => u.id === umkm.user_id)
+    return user?.rw || null
+  }
+  return null
+}
+
+function DashboardContent() {
   const { user } = useAuth()
+  const [stats, setStats] = useState({
+    totalUMKM: 0,
+    umkmAktif: 0,
+    umkmTidakAktif: 0,
+    totalRAB: 0,
+    totalModal: 0,
+    totalKaryawan: 0,
+    jenisUsahaStats: {} as Record<string, number>,
+    kategoriStats: {} as Record<string, number>,
+    recentUMKM: [] as UMKM[],
+  })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadUMKM()
+    loadStats()
   }, [user])
 
-  useEffect(() => {
-    let filtered = umkm.filter(
-      (u) =>
-        u.nama_usaha.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.pemilik.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.jenis_usaha.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.no_hp && u.no_hp.includes(searchTerm)),
-    )
-
-    if (filterJenis !== "semua") {
-      filtered = filtered.filter((u) => u.jenis_usaha === filterJenis)
-    }
-
-    if (filterStatus !== "semua") {
-      filtered = filtered.filter((u) => u.status === filterStatus)
-    }
-
-    setFilteredUmkm(filtered)
-  }, [umkm, searchTerm, filterJenis, filterStatus])
-
-  const loadUMKM = async () => {
+  const loadStats = async () => {
     try {
       setLoading(true)
 
-      let data: UMKM[] = []
+      let umkm: UMKM[] = []
 
       if (user?.role === "admin") {
-        data = await umkmService.getAll(undefined, user.rw)
+        umkm = await umkmService.getAll(undefined, user.rw)
       } else {
-        data = await umkmService.getAll(user?.id)
+        umkm = await umkmService.getAll(user?.id)
       }
 
-      setUmkm(data)
-      setFilteredUmkm(data)
+      const umkmAktif = umkm.filter((u) => u.status === "Aktif").length
+      const umkmTidakAktif = umkm.filter((u) => u.status !== "Aktif").length
+      const totalRAB = umkm.reduce((sum, u) => sum + (u.rab || 0), 0)
+      const totalModal = umkm.reduce((sum, u) => sum + (u.modal_awal || 0), 0)
+      const totalKaryawan = umkm.reduce((sum, u) => sum + (u.jumlah_karyawan || 0), 0)
+
+      const jenisUsahaStats = umkm.reduce((acc: Record<string, number>, u) => {
+        if (u.jenis_usaha) {
+          acc[u.jenis_usaha] = (acc[u.jenis_usaha] || 0) + 1
+        }
+        return acc
+      }, {})
+
+      const kategoriStats = umkm.reduce((acc: Record<string, number>, u) => {
+        if (u.kategori_usaha) {
+          acc[u.kategori_usaha] = (acc[u.kategori_usaha] || 0) + 1
+        }
+        return acc
+      }, {})
+
+      const recentUMKM = umkm.slice(0, 5)
+
+      setStats({
+        totalUMKM: umkm.length,
+        umkmAktif,
+        umkmTidakAktif,
+        totalRAB,
+        totalModal,
+        totalKaryawan,
+        jenisUsahaStats,
+        kategoriStats,
+        recentUMKM,
+      })
     } catch (error) {
-      console.error("Error loading UMKM:", error)
+      console.error("Error loading stats:", error)
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus data UMKM ini?")) {
-      try {
-        if (user?.role === "admin") {
-          const umkmToDelete = umkm.find((u) => u.id === id)
-          if (umkmToDelete?.user_id) {
-            await umkmService.delete(id, umkmToDelete.user_id)
-          }
-        } else {
-          await umkmService.delete(id, user?.id || "")
-        }
-        await loadUMKM()
-        alert("Data UMKM berhasil dihapus!")
-      } catch (error) {
-        console.error("Error deleting UMKM:", error)
-        alert("Gagal menghapus data UMKM. Silakan coba lagi.")
-      }
-    }
-  }
-
-  const exportToCSV = () => {
-    const headers = ["Nama Usaha", "Pemilik", "Jenis Usaha", "Nomor HP", "Status"]
-    const csvContent = [
-      headers.join(","),
-      ...filteredUmkm.map((u) => [u.nama_usaha, u.pemilik, u.jenis_usaha, u.no_hp || "", u.status].join(",")),
-    ].join("\n")
-
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `data-umkm-${user?.role === "admin" ? `rw-${user.rw}` : "user"}-${new Date().toISOString().split("T")[0]}.csv`
-    a.click()
   }
 
   if (loading) {
@@ -117,165 +106,299 @@ function DataUMKMContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      <MigrationBanner />
+      <DebugPanel />
+
       <HeaderWithAuth
-        title={`Kelola Data UMKM ${user?.role === "admin" ? `RW ${user.rw}` : ""}`}
-        description={`Manajemen lengkap data UMKM mikro ${user?.role === "admin" ? `di RW ${user.rw}` : "di wilayah Anda"}`}
+        title={`Sistem Pendataan UMKM ${user?.role === "admin" ? `RW ${user.rw}` : ""}`}
+        description={`Dashboard ${user?.role === "admin" ? `Admin RW ${user.rw}` : "User"} - Kelola UMKM Mikro di Wilayah Anda`}
       >
-        <Button
-          variant="outline"
-          onClick={exportToCSV}
-          className="border-border bg-transparent rounded-lg hover:bg-muted"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export Data
-        </Button>
         <Button size="lg" asChild className="bg-primary hover:bg-primary/90 rounded-lg">
           <Link href="/umkm/tambah">
             <Plus className="h-5 w-5 mr-2" />
-            Tambah UMKM
+            Daftarkan UMKM Baru
           </Link>
         </Button>
       </HeaderWithAuth>
 
       <NavigationWithAuth />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="bg-card shadow-lg border border-border rounded-xl">
-          <CardHeader>
-            <CardTitle className="text-xl text-foreground">Daftar UMKM Terdaftar</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Kelola dan pantau semua UMKM mikro di wilayah Anda
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Cari nama usaha, pemilik, jenis usaha, atau nomor HP..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-border focus:border-primary focus:ring-primary rounded-lg"
-                />
-              </div>
-              <Select value={filterJenis} onValueChange={setFilterJenis}>
-                <SelectTrigger className="w-48 border-border rounded-lg">
-                  <SelectValue placeholder="Filter Jenis Usaha" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="semua">Semua Jenis</SelectItem>
-                  <SelectItem value="Kuliner">Kuliner</SelectItem>
-                  <SelectItem value="Fashion">Fashion</SelectItem>
-                  <SelectItem value="Kerajinan">Kerajinan</SelectItem>
-                  <SelectItem value="Jasa">Jasa</SelectItem>
-                  <SelectItem value="Perdagangan">Perdagangan</SelectItem>
-                  <SelectItem value="Teknologi">Teknologi</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-48 border-border rounded-lg">
-                  <SelectValue placeholder="Filter Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="semua">Semua Status</SelectItem>
-                  <SelectItem value="Aktif">Aktif</SelectItem>
-                  <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                  <SelectItem value="Tutup Sementara">Tutup Sementara</SelectItem>
-                </SelectContent>
-              </Select>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <div className="bg-card rounded-xl p-3 shadow-sm border border-border">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center space-x-4">
+              <span className="text-muted-foreground">Status:</span>
+              {!hasNeon ? (
+                <span className="text-orange-600">⚠️ Mode offline - Data hanya tersimpan di device ini</span>
+              ) : (
+                <span className="text-green-600">✅ Mode online - Data tersinkron ke semua device</span>
+              )}
+              {user?.role === "admin" && <span className="text-primary">🏘️ Mengelola RW {user.rw}</span>}
             </div>
+            <div className="text-muted-foreground">
+              Login sebagai: <span className="font-medium text-foreground">{user?.name}</span> ({user?.role})
+            </div>
+          </div>
+        </div>
+      </div>
 
-            <div className="rounded-lg border border-border overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted">
-                  <TableRow>
-                    <TableHead className="font-semibold text-foreground">Nama Usaha</TableHead>
-                    <TableHead className="font-semibold text-foreground">Pemilik</TableHead>
-                    <TableHead className="font-semibold text-foreground">Jenis Usaha</TableHead>
-                    <TableHead className="font-semibold text-foreground">Nomor HP</TableHead>
-                    <TableHead className="font-semibold text-foreground">Status</TableHead>
-                    <TableHead className="font-semibold text-foreground">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUmkm.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12">
-                        <Building2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                        <p className="text-muted-foreground text-lg">Tidak ada data UMKM</p>
-                        <p className="text-muted-foreground/80 text-sm mt-1">Mulai dengan mendaftarkan UMKM pertama</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredUmkm.map((u) => (
-                      <TableRow key={u.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium text-foreground">{u.nama_usaha}</TableCell>
-                        <TableCell className="text-muted-foreground">{u.pemilik}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-primary/20 text-primary bg-primary/10 rounded-md">
-                            {u.jenis_usaha}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{u.no_hp || "-"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              u.status === "Aktif"
-                                ? "default"
-                                : u.status === "Tidak Aktif"
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                            className={
-                              u.status === "Aktif"
-                                ? "bg-green-100 text-green-800 border-green-200 rounded-md"
-                                : u.status === "Tidak Aktif"
-                                  ? "bg-destructive/10 text-destructive border-destructive/20 rounded-md"
-                                  : "bg-muted text-muted-foreground border-border rounded-md"
-                            }
-                          >
-                            {u.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              asChild
-                              className="border-border hover:bg-muted bg-transparent rounded-lg"
-                            >
-                              <Link href={`/umkm/edit/${u.id}`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(u.id!)}
-                              className="text-destructive hover:text-destructive/90 border-destructive/20 hover:bg-destructive/5 rounded-lg"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <div className="bg-gradient-to-r from-primary to-accent rounded-2xl p-8 text-primary-foreground shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Selamat Datang, {user?.name}!</h2>
+                <p className="text-primary-foreground/90 text-lg">
+                  {user?.role === "admin"
+                    ? `Kelola dan pantau perkembangan UMKM mikro di RW ${user.rw} dengan mudah`
+                    : "Pantau dan kelola data UMKM di wilayah RT/RW Anda"}
+                </p>
+                {user?.role === "admin" && (
+                  <p className="text-primary-foreground/70 text-sm mt-2">
+                    📊 Dashboard khusus untuk wilayah RW {user.rw} - Data UMKM yang ditampilkan hanya dari warga RW{" "}
+                    {user.rw}
+                  </p>
+                )}
+                {hasNeon ? (
+                  <p className="text-primary-foreground/70 text-sm mt-2">
+                    💾 Data tersimpan secara online dan dapat diakses dari semua perangkat
+                  </p>
+                ) : (
+                  <p className="text-orange-200 text-sm mt-2">
+                    📱 Mode offline - Setup database untuk sinkronisasi multi-device
+                  </p>
+                )}
+              </div>
+              <div className="hidden md:block">
+                <Building2 className="h-24 w-24 text-primary-foreground/50" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total UMKM {user?.role === "admin" ? `RW ${user.rw}` : ""}
+              </CardTitle>
+              <Building2 className="h-5 w-5 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-foreground">{stats.totalUMKM}</div>
+              <p className="text-sm text-muted-foreground mt-1">Usaha terdaftar</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">UMKM Aktif</CardTitle>
+              <TrendingUp className="h-5 w-5 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">{stats.umkmAktif}</div>
+              <p className="text-sm text-muted-foreground mt-1">Beroperasi aktif</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Modal</CardTitle>
+              <DollarSign className="h-5 w-5 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600">
+                {stats.totalModal > 0 ? `${(stats.totalModal / 1000000).toFixed(1)}M` : "0"}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Rupiah investasi</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Penyerapan Tenaga Kerja</CardTitle>
+              <Users className="h-5 w-5 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-600">{stats.totalKaryawan}</div>
+              <p className="text-sm text-muted-foreground mt-1">Orang bekerja</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <Card className="bg-card shadow-lg border border-border rounded-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center text-foreground">
+                <PieChart className="h-5 w-5 mr-2 text-primary" />
+                Distribusi Jenis Usaha {user?.role === "admin" ? `RW ${user.rw}` : ""}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">Sebaran UMKM berdasarkan jenis usaha</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(stats.jenisUsahaStats)
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 6)
+                  .map(([jenis, jumlah]) => (
+                    <div key={jenis} className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">{jenis}</span>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-24 bg-muted rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-primary to-accent h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${stats.totalUMKM > 0 ? (jumlah / stats.totalUMKM) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-bold text-foreground w-8">{jumlah}</span>
+                      </div>
+                    </div>
+                  ))}
+                {Object.keys(stats.jenisUsahaStats).length === 0 && (
+                  <div className="text-center py-8">
+                    <Building2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground">Belum ada data UMKM</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card shadow-lg border border-border rounded-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center text-foreground">
+                <Building2 className="h-5 w-5 mr-2 text-green-600" />
+                UMKM Terbaru Terdaftar
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">5 UMKM yang baru saja didaftarkan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.recentUMKM.length > 0 ? (
+                  stats.recentUMKM.map((umkm) => (
+                    <div
+                      key={umkm.id}
+                      className="flex items-center space-x-4 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                    >
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-primary-foreground" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{umkm.nama_usaha}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {umkm.pemilik} • {umkm.jenis_usaha}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            umkm.status === "Aktif" ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {umkm.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Building2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground">Belum ada UMKM terdaftar</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer border-0 rounded-2xl">
+            <Link href="/umkm/tambah">
+              <CardHeader>
+                <CardTitle className="flex items-center text-primary-foreground">
+                  <Plus className="h-6 w-6 mr-3" />
+                  Daftarkan UMKM Baru
+                </CardTitle>
+                <CardDescription className="text-primary-foreground/90">
+                  Tambahkan data UMKM mikro baru ke dalam sistem
+                </CardDescription>
+              </CardHeader>
+            </Link>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer border-0 rounded-2xl">
+            <Link href="/umkm">
+              <CardHeader>
+                <CardTitle className="flex items-center text-white">
+                  <BarChart3 className="h-6 w-6 mr-3" />
+                  Kelola Data UMKM
+                </CardTitle>
+                <CardDescription className="text-green-100">Edit, update, dan kelola semua data UMKM</CardDescription>
+              </CardHeader>
+            </Link>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer border-0 rounded-2xl">
+            <Link href="/laporan">
+              <CardHeader>
+                <CardTitle className="flex items-center text-white">
+                  <PieChart className="h-6 w-6 mr-3" />
+                  Lihat Laporan
+                </CardTitle>
+                <CardDescription className="text-purple-100">Analisis dan statistik perkembangan UMKM</CardDescription>
+              </CardHeader>
+            </Link>
+          </Card>
+        </div>
+
+        {stats.totalUMKM > 0 && (
+          <div className="mt-8">
+            <Card className="bg-card shadow-lg border border-border rounded-xl">
+              <CardHeader>
+                <CardTitle className="text-foreground">
+                  Ringkasan Status UMKM {user?.role === "admin" ? `RW ${user.rw}` : ""}
+                </CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Gambaran umum kondisi UMKM di wilayah Anda
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{stats.umkmAktif}</div>
+                    <div className="text-sm text-green-700 mt-1">UMKM Aktif</div>
+                    <div className="text-xs text-green-600 mt-1">
+                      {stats.totalUMKM > 0 ? Math.round((stats.umkmAktif / stats.totalUMKM) * 100) : 0}% dari total
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-muted rounded-lg">
+                    <div className="text-2xl font-bold text-muted-foreground">{stats.umkmTidakAktif}</div>
+                    <div className="text-sm text-foreground mt-1">Tidak Aktif</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {stats.totalUMKM > 0 ? Math.round((stats.umkmTidakAktif / stats.totalUMKM) * 100) : 0}% dari total
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-primary/10 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">Rp {(stats.totalRAB / 1000000).toFixed(1)}M</div>
+                    <div className="text-sm text-primary/90 mt-1">Total RAB</div>
+                    <div className="text-xs text-primary/80 mt-1">Rencana anggaran biaya</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </main>
     </div>
   )
 }
 
-export default function DataUMKM() {
+export default function Dashboard() {
   return (
     <ProtectedRoute>
-      <DataUMKMContent />
+      <DashboardContent />
     </ProtectedRoute>
   )
 }
