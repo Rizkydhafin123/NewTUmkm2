@@ -2,109 +2,87 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { umkmService } from "@/lib/db"
+import { useUser } from "@/lib/hooks/use-user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
-import { umkmService, type UMKM } from "@/lib/db"
-import { useAuth } from "@/lib/auth"
 
 interface EditUMKMClientProps {
-  umkmId: string // umkmId diterima sebagai prop
+  umkmId: string
 }
 
 export default function EditUMKMClient({ umkmId }: EditUMKMClientProps) {
   const router = useRouter()
-  const { user } = useAuth()
-  const [formData, setFormData] = useState<Partial<UMKM>>({})
+  const { user, isLoading: isUserLoading } = useUser()
+  const [umkm, setUmkm] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadUMKMData = async () => {
-      if (!user) {
-        console.log("User not authenticated, redirecting to /login.")
-        router.push("/login")
-        return
-      }
+    async function fetchUmkmData() {
+      if (!umkmId || isUserLoading) return
+
       setLoading(true)
+      setError(null)
       try {
-        const data = await umkmService.getById(umkmId, user.role === "admin" ? undefined : user.id)
+        console.log(`EditUMKMClient: Fetching UMKM with ID: ${umkmId}`)
+        const data = await umkmService.getById(umkmId)
         if (data) {
-          setFormData(data)
+          setUmkm(data)
+          console.log("EditUMKMClient: UMKM data fetched successfully:", data)
         } else {
-          setError("Data UMKM tidak ditemukan atau Anda tidak memiliki akses.")
-          console.log("UMKM data not found or no access, redirecting to /umkm.")
-          router.push("/umkm") // Redirect ke daftar UMKM jika data tidak ditemukan
+          setError("UMKM tidak ditemukan.")
+          console.error("EditUMKMClient: UMKM not found for ID:", umkmId)
         }
       } catch (err) {
-        console.error("Error loading UMKM data:", err)
+        console.error("EditUMKMClient: Error fetching UMKM data:", err)
         setError("Gagal memuat data UMKM. Silakan coba lagi.")
-        console.log("Error loading UMKM data, redirecting to /umkm.")
-        router.push("/umkm") // Redirect ke daftar UMKM jika ada error saat memuat
       } finally {
         setLoading(false)
       }
     }
 
-    loadUMKMData()
-  }, [umkmId, user, router])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target
-    setFormData((prev) => ({ ...prev, [id]: value }))
-  }
-
-  const handleSelectChange = (id: keyof UMKM, value: string) => {
-    setFormData((prev) => ({ ...prev, [id]: value }))
-  }
+    fetchUmkmData()
+  }, [umkmId, isUserLoading])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!umkm || !user) return
+
     setSubmitting(true)
     setError(null)
 
-    if (!user?.id) {
-      setError("Anda harus login untuk mengedit data UMKM.")
-      setSubmitting(false)
-      return
-    }
-
-    // Basic validation
-    if (!formData.nama_usaha || !formData.pemilik || !formData.jenis_usaha || !formData.status) {
-      setError("Nama Usaha, Pemilik, Jenis Usaha, dan Status harus diisi.")
+    // Validasi sederhana
+    if (!umkm.nama_usaha || !umkm.jenis_usaha || !umkm.status) {
+      alert("Nama Usaha, Jenis Usaha, dan Status harus diisi.")
       setSubmitting(false)
       return
     }
 
     try {
-      // Pastikan nilai numerik di-parse dengan benar
-      const updateData = {
-        ...formData,
-        kapasitas_produksi: formData.kapasitas_produksi ? Number(formData.kapasitas_produksi) : undefined,
-        periode_operasi: formData.periode_operasi ? Number(formData.periode_operasi) : undefined,
-        hari_kerja_per_minggu: formData.hari_kerja_per_minggu ? Number(formData.hari_kerja_per_minggu) : undefined,
-        total_produksi: formData.total_produksi ? Number(formData.total_produksi) : undefined,
-        rab: formData.rab ? Number(formData.rab) : undefined,
-        biaya_tetap: formData.biaya_tetap ? Number(formData.biaya_tetap) : undefined,
-        biaya_variabel: formData.biaya_variabel ? Number(formData.biaya_variabel) : undefined,
-        modal_awal: formData.modal_awal ? Number(formData.modal_awal) : undefined,
-        target_pendapatan: formData.target_pendapatan ? Number(formData.target_pendapatan) : undefined,
-        jumlah_karyawan: formData.jumlah_karyawan ? Number(formData.jumlah_karyawan) : undefined,
+      const updatedUmkm = {
+        ...umkm,
+        // Pastikan nilai numerik di-parse dengan benar
+        modal_usaha: umkm.modal_usaha ? Number.parseFloat(umkm.modal_usaha) : null,
+        omset_bulanan: umkm.omset_bulanan ? Number.parseFloat(umkm.omset_bulanan) : null,
+        jumlah_karyawan: umkm.jumlah_karyawan ? Number.parseInt(umkm.jumlah_karyawan, 10) : null,
       }
 
-      await umkmService.update(umkmId, updateData, user.role === "admin" ? formData.user_id! : user.id)
-      console.log("UMKM updated successfully. Redirecting to /umkm.") // Log ini akan muncul di konsol browser
+      console.log("EditUMKMClient: Submitting updated UMKM data:", updatedUmkm)
+      await umkmService.update(umkmId, updatedUmkm)
+      console.log("EditUMKMClient: UMKM updated successfully. Redirecting to /umkm.")
       router.push("/umkm") // Redirect ke halaman daftar UMKM
     } catch (err) {
-      console.error("Error updating UMKM:", err)
-      setError("Gagal memperbarui data UMKM. Silakan coba lagi.")
+      console.error("EditUMKMClient: Error updating UMKM:", err)
+      setError("Gagal memperbarui UMKM. Silakan coba lagi.")
     } finally {
       setSubmitting(false)
     }
@@ -112,315 +90,168 @@ export default function EditUMKMClient({ umkmId }: EditUMKMClientProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Memuat data UMKM...</p>
-        </div>
+      <div className="flex justify-center items-center h-[calc(100vh-200px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Memuat data UMKM...</span>
       </div>
     )
   }
 
-  if (error && !loading) {
+  if (error) {
+    return <div className="flex justify-center items-center h-[calc(100vh-200px)] text-red-500">{error}</div>
+  }
+
+  if (!umkm) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
-        <Card className="w-full max-w-md p-6 text-center">
-          <CardTitle className="text-2xl font-bold text-destructive mb-4">Error</CardTitle>
-          <CardDescription className="text-muted-foreground mb-6">{error}</CardDescription>
-          <Button onClick={() => router.push("/umkm")}>Kembali ke Daftar UMKM</Button>
-        </Card>
+      <div className="flex justify-center items-center h-[calc(100vh-200px)] text-gray-500">
+        Data UMKM tidak ditemukan.
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 sm:p-6 lg:p-8">
-      <main className="max-w-4xl mx-auto">
-        <Card className="bg-card shadow-lg border border-border rounded-xl">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-foreground">Edit Data UMKM</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Perbarui informasi detail UMKM mikro ini.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <div className="bg-destructive/10 text-destructive border border-destructive/20 p-3 rounded-md mb-4">
-                {error}
-              </div>
-            )}
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="nama_usaha">Nama Usaha</Label>
-                <Input
-                  id="nama_usaha"
-                  value={formData.nama_usaha || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: Warung Kopi Bahagia"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pemilik">Nama Pemilik</Label>
-                <Input
-                  id="pemilik"
-                  value={formData.pemilik || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: Budi Santoso"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nik_pemilik">NIK Pemilik (Opsional)</Label>
-                <Input
-                  id="nik_pemilik"
-                  value={formData.nik_pemilik || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 1234567890123456"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="no_hp">Nomor HP (Opsional)</Label>
-                <Input
-                  id="no_hp"
-                  value={formData.no_hp || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 081234567890"
-                />
-              </div>
-              <div className="space-y-2 col-span-full">
-                <Label htmlFor="alamat_usaha">Alamat Usaha (Opsional)</Label>
-                <Textarea
-                  id="alamat_usaha"
-                  value={formData.alamat_usaha || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: Jl. Merdeka No. 10, RT 001/RW 001"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="jenis_usaha">Jenis Usaha</Label>
-                <Select
-                  value={formData.jenis_usaha || ""}
-                  onValueChange={(value) => handleSelectChange("jenis_usaha", value)}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Jenis Usaha" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Kuliner">Kuliner</SelectItem>
-                    <SelectItem value="Fashion">Fashion</SelectItem>
-                    <SelectItem value="Kerajinan">Kerajinan</SelectItem>
-                    <SelectItem value="Jasa">Jasa</SelectItem>
-                    <SelectItem value="Perdagangan">Perdagangan</SelectItem>
-                    <SelectItem value="Teknologi">Teknologi</SelectItem>
-                    <SelectItem value="Lainnya">Lainnya</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="kategori_usaha">Kategori Usaha (Opsional)</Label>
-                <Input
-                  id="kategori_usaha"
-                  value={formData.kategori_usaha || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: Makanan Berat, Pakaian Muslim"
-                />
-              </div>
-              <div className="space-y-2 col-span-full">
-                <Label htmlFor="deskripsi_usaha">Deskripsi Usaha (Opsional)</Label>
-                <Textarea
-                  id="deskripsi_usaha"
-                  value={formData.deskripsi_usaha || ""}
-                  onChange={handleChange}
-                  placeholder="Jelaskan secara singkat tentang usaha ini..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="produk">Produk/Layanan Utama (Opsional)</Label>
-                <Input
-                  id="produk"
-                  value={formData.produk || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: Nasi Goreng, Jilbab Syar'i"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="kapasitas_produksi">Kapasitas Produksi (Opsional)</Label>
-                <Input
-                  id="kapasitas_produksi"
-                  type="number"
-                  value={formData.kapasitas_produksi || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 100"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="satuan_produksi">Satuan Produksi (Opsional)</Label>
-                <Input
-                  id="satuan_produksi"
-                  value={formData.satuan_produksi || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: porsi/hari, pcs/minggu"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="periode_operasi">Periode Operasi (Opsional)</Label>
-                <Input
-                  id="periode_operasi"
-                  type="number"
-                  value={formData.periode_operasi || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 12"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="satuan_periode">Satuan Periode (Opsional)</Label>
-                <Select
-                  value={formData.satuan_periode || "bulan"}
-                  onValueChange={(value) => handleSelectChange("satuan_periode", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Satuan Periode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hari">Hari</SelectItem>
-                    <SelectItem value="minggu">Minggu</SelectItem>
-                    <SelectItem value="bulan">Bulan</SelectItem>
-                    <SelectItem value="tahun">Tahun</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hari_kerja_per_minggu">Hari Kerja per Minggu (Opsional)</Label>
-                <Input
-                  id="hari_kerja_per_minggu"
-                  type="number"
-                  value={formData.hari_kerja_per_minggu || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 6"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="total_produksi">Total Produksi (Opsional)</Label>
-                <Input
-                  id="total_produksi"
-                  type="number"
-                  value={formData.total_produksi || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 1200"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="rab">RAB (Rencana Anggaran Biaya) (Opsional)</Label>
-                <Input
-                  id="rab"
-                  type="number"
-                  value={formData.rab || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 5000000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="biaya_tetap">Biaya Tetap (Opsional)</Label>
-                <Input
-                  id="biaya_tetap"
-                  type="number"
-                  value={formData.biaya_tetap || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 1000000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="biaya_variabel">Biaya Variabel (Opsional)</Label>
-                <Input
-                  id="biaya_variabel"
-                  type="number"
-                  value={formData.biaya_variabel || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 500000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="modal_awal">Modal Awal (Opsional)</Label>
-                <Input
-                  id="modal_awal"
-                  type="number"
-                  value={formData.modal_awal || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 2000000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="target_pendapatan">Target Pendapatan (Opsional)</Label>
-                <Input
-                  id="target_pendapatan"
-                  type="number"
-                  value={formData.target_pendapatan || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 7000000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="jumlah_karyawan">Jumlah Karyawan (Opsional)</Label>
-                <Input
-                  id="jumlah_karyawan"
-                  type="number"
-                  value={formData.jumlah_karyawan || ""}
-                  onChange={handleChange}
-                  placeholder="Contoh: 2"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status || ""}
-                  onValueChange={(value) => handleSelectChange("status", value)}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Aktif">Aktif</SelectItem>
-                    <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                    <SelectItem value="Tutup Sementara">Tutup Sementara</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tanggal_daftar">Tanggal Daftar (Opsional)</Label>
-                <Input
-                  id="tanggal_daftar"
-                  type="date"
-                  value={formData.tanggal_daftar ? formData.tanggal_daftar.split("T")[0] : ""}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col-span-full flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/umkm")}
-                  disabled={submitting}
-                  className="w-full sm:w-auto order-2 sm:order-1"
-                >
-                  Batal
-                </Button>
-                <Button type="submit" disabled={submitting} className="w-full sm:w-auto order-1 sm:order-2">
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Menyimpan...
-                    </>
-                  ) : (
-                    "Simpan Perubahan"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>Edit Data UMKM</CardTitle>
+          <CardDescription>Perbarui informasi UMKM yang sudah ada.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="nama_usaha">Nama Usaha</Label>
+              <Input
+                id="nama_usaha"
+                value={umkm.nama_usaha || ""}
+                onChange={(e) => setUmkm({ ...umkm, nama_usaha: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pemilik">Nama Pemilik</Label>
+              <Input
+                id="pemilik"
+                value={umkm.pemilik || ""}
+                onChange={(e) => setUmkm({ ...umkm, pemilik: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="jenis_usaha">Jenis Usaha</Label>
+              <Select
+                value={umkm.jenis_usaha || ""}
+                onValueChange={(value) => setUmkm({ ...umkm, jenis_usaha: value })}
+                required
+              >
+                <SelectTrigger id="jenis_usaha">
+                  <SelectValue placeholder="Pilih Jenis Usaha" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Kuliner">Kuliner</SelectItem>
+                  <SelectItem value="Fashion">Fashion</SelectItem>
+                  <SelectItem value="Kerajinan">Kerajinan</SelectItem>
+                  <SelectItem value="Jasa">Jasa</SelectItem>
+                  <SelectItem value="Otomotif">Otomotif</SelectItem>
+                  <SelectItem value="Lainnya">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="alamat">Alamat</Label>
+              <Textarea
+                id="alamat"
+                value={umkm.alamat || ""}
+                onChange={(e) => setUmkm({ ...umkm, alamat: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="nomor_hp">Nomor HP</Label>
+              <Input
+                id="nomor_hp"
+                value={umkm.nomor_hp || ""}
+                onChange={(e) => setUmkm({ ...umkm, nomor_hp: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={umkm.email || ""}
+                onChange={(e) => setUmkm({ ...umkm, email: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="modal_usaha">Modal Usaha (Rp)</Label>
+              <Input
+                id="modal_usaha"
+                type="number"
+                value={umkm.modal_usaha || ""}
+                onChange={(e) => setUmkm({ ...umkm, modal_usaha: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="omset_bulanan">Omset Bulanan (Rp)</Label>
+              <Input
+                id="omset_bulanan"
+                type="number"
+                value={umkm.omset_bulanan || ""}
+                onChange={(e) => setUmkm({ ...umkm, omset_bulanan: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="jumlah_karyawan">Jumlah Karyawan</Label>
+              <Input
+                id="jumlah_karyawan"
+                type="number"
+                value={umkm.jumlah_karyawan || ""}
+                onChange={(e) => setUmkm({ ...umkm, jumlah_karyawan: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="tahun_berdiri">Tahun Berdiri</Label>
+              <Input
+                id="tahun_berdiri"
+                type="number"
+                value={umkm.tahun_berdiri || ""}
+                onChange={(e) => setUmkm({ ...umkm, tahun_berdiri: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={umkm.status || ""} onValueChange={(value) => setUmkm({ ...umkm, status: value })} required>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Pilih Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Aktif">Aktif</SelectItem>
+                  <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                  <SelectItem value="Dalam Proses">Dalam Proses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="deskripsi">Deskripsi</Label>
+              <Textarea
+                id="deskripsi"
+                value={umkm.deskripsi || ""}
+                onChange={(e) => setUmkm({ ...umkm, deskripsi: e.target.value })}
+              />
+            </div>
+            <div className="col-span-full flex justify-end gap-2">
+              <Button type="submit" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Perubahan"
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
   )
 }
