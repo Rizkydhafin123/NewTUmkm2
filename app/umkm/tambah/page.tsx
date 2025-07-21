@@ -38,11 +38,12 @@ function TambahUMKMContent() {
     satuan_periode: "bulan",
     hari_kerja_per_minggu: "",
     total_produksi: "",
-    rab: "",
-    biaya_tetap: "",
-    biaya_variabel: "",
-    modal_awal: "",
-    target_pendapatan: "",
+    // Removed financial fields:
+    // rab: "",
+    // biaya_tetap: "",
+    // biaya_variabel: "",
+    // modal_awal: "",
+    // target_pendapatan: "",
     jumlah_karyawan: "",
     status: "Aktif",
   })
@@ -79,11 +80,12 @@ function TambahUMKMContent() {
         satuan_periode: formData.satuan_periode,
         hari_kerja_per_minggu: Number.parseInt(formData.hari_kerja_per_minggu) || 0,
         total_produksi: Number.parseInt(formData.total_produksi) || 0,
-        rab: Number.parseInt(formData.rab) || 0,
-        biaya_tetap: Number.parseInt(formData.biaya_tetap) || 0,
-        biaya_variabel: Number.parseInt(formData.biaya_variabel) || 0,
-        modal_awal: Number.parseInt(formData.modal_awal) || 0,
-        target_pendapatan: Number.parseInt(formData.target_pendapatan) || 0,
+        // Removed financial fields from payload:
+        rab: 0, // Set to 0 or remove if not needed in DB schema
+        biaya_tetap: 0, // Set to 0 or remove if not needed in DB schema
+        biaya_variabel: 0, // Set to 0 or remove if not needed in DB schema
+        modal_awal: 0, // Set to 0 or remove if not needed in DB schema
+        target_pendapatan: 0, // Set to 0 or remove if not needed in DB schema
         jumlah_karyawan: Number.parseInt(formData.jumlah_karyawan) || 0,
         status: formData.status,
         tanggal_daftar: new Date().toISOString(),
@@ -423,6 +425,8 @@ function TambahUMKMContent() {
                 </div>
               </div>
 
+              {/* Removed "Rencana Anggaran dan Biaya" section */}
+              {/*
               <div className="space-y-4 sm:space-y-6">
                 <div className="border-l-4 border-orange-500 pl-3 sm:pl-4">
                   <h3 className="text-lg sm:text-xl font-semibold text-foreground">Rencana Anggaran dan Biaya</h3>
@@ -522,6 +526,7 @@ function TambahUMKMContent() {
                   </div>
                 </div>
               </div>
+              */}
 
               <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-border">
                 <Button
