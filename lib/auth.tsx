@@ -1,5 +1,6 @@
 "use client"
 
+import Cookies from "js-cookie"
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
 export interface User {
@@ -87,13 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Load current user
-    const currentUser = localStorage.getItem("auth_user")
+    const currentUser = Cookies.get("auth_user")
     if (currentUser) {
       try {
         const userData = JSON.parse(currentUser)
         setUser(userData)
       } catch (error) {
-        localStorage.removeItem("auth_user")
+        Cookies.remove("auth_user")
       }
     }
     setIsLoading(false)
@@ -126,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setUser(adminUser)
-          localStorage.setItem("auth_user", JSON.stringify(adminUser))
+          Cookies.set("auth_user", JSON.stringify(adminUser), { expires: 7 })
           return true
         }
       } else {
@@ -138,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (customPassword && password === customPassword) {
             const updatedAdmin = { ...admin, must_change_password: false }
             setUser(updatedAdmin)
-            localStorage.setItem("auth_user", JSON.stringify(updatedAdmin))
+            Cookies.set("auth_user", JSON.stringify(updatedAdmin), { expires: 7 })
             return true
           }
         }
@@ -152,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (foundUser) {
       const { password: _, ...userWithoutPassword } = foundUser
       setUser(userWithoutPassword)
-      localStorage.setItem("auth_user", JSON.stringify(userWithoutPassword))
+      Cookies.set("auth_user", JSON.stringify(userWithoutPassword), { expires: 7 })
       return true
     }
 
@@ -189,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem("auth_user")
+    Cookies.remove("auth_user")
   }
 
   const changePassword = async (
@@ -225,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         last_password_change: new Date().toISOString(),
       }
       setUser(updatedUser)
-      localStorage.setItem("auth_user", JSON.stringify(updatedUser))
+      Cookies.set("auth_user", JSON.stringify(updatedUser), { expires: 7 })
 
       return { success: true, message: "Password berhasil diubah" }
     } else {
