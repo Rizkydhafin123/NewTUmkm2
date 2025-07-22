@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,8 +35,8 @@ function EditUMKMContent({ umkmId }: EditUMKMClientProps) {
       // Di dalam fungsi `EditUMKMContent`, di awal `loadUMKMData`
       // Tambahkan validasi ID UMKM
       if (!isValidUUID(umkmId)) {
-        setError("ID UMKM tidak valid.")
-        setLoading(false)
+        console.warn(`Invalid UMKM ID received: ${umkmId}. Triggering notFound().`)
+        notFound() // This will render the nearest not-found.tsx or default 404
         return
       }
       if (!user) {
@@ -50,7 +50,8 @@ function EditUMKMContent({ umkmId }: EditUMKMClientProps) {
         if (data) {
           setFormData(data)
         } else {
-          setError("Data UMKM tidak ditemukan atau Anda tidak memiliki akses.")
+          console.warn(`UMKM with ID ${umkmId} not found or access denied. Triggering notFound().`)
+          notFound()
         }
       } catch (err) {
         console.error("Error loading UMKM data:", err)
@@ -139,18 +140,6 @@ function EditUMKMContent({ umkmId }: EditUMKMClientProps) {
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Memuat data UMKM...</p>
         </div>
-      </div>
-    )
-  }
-
-  if (error && !loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
-        <Card className="w-full max-w-md p-6 text-center">
-          <CardTitle className="text-2xl font-bold text-destructive mb-4">Error</CardTitle>
-          <CardDescription className="text-muted-foreground mb-6">{error}</CardDescription>
-          <Button onClick={() => router.push("/umkm")}>Kembali ke Daftar UMKM</Button>
-        </Card>
       </div>
     )
   }
