@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { registerUser } from "@/app/actions/auth" // Import the new server action
 
 export interface User {
   id: string
@@ -55,6 +54,15 @@ const ADMIN_USERS = [
 ]
 
 const DEFAULT_ADMIN_PASSWORD = "admin"
+
+// Generate UUID v4
+function generateUUID(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -156,26 +164,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: "Username tidak tersedia" }
     }
 
-    // Call the server action to register the user in the database
-    const result = await registerUser(userData)
+    const users = JSON.parse(localStorage.getItem("registered_users") || "[]")
+    const existingUser = users.find((u: any) => u.username === userData.username)
 
-    // If registration is successful, also update localStorage for client-side consistency
-    if (result.success) {
-      const users = JSON.parse(localStorage.getItem("registered_users") || "[]")
-      const newUser = {
-        id: "temp-id-" + Date.now(), // A temporary ID, as the real ID comes from DB
-        username: userData.username,
-        password: userData.password, // This password should ideally not be stored in localStorage
-        name: userData.name,
-        role: "user" as const,
-        rw: userData.rw,
-        created_at: new Date().toISOString(),
-      }
-      users.push(newUser)
-      localStorage.setItem("registered_users", JSON.stringify(users))
+    if (existingUser) {
+      return { success: false, message: "Username sudah digunakan" }
     }
 
-    return result
+    const newUser = {
+      id: generateUUID(),
+      username: userData.username,
+      password: userData.password,
+      name: userData.name,
+      role: "user" as const,
+      rw: userData.rw,
+      created_at: new Date().toISOString(),
+    }
+
+    users.push(newUser)
+    localStorage.setItem("registered_users", JSON.stringify(users))
+
+    return { success: true, message: "Registrasi berhasil! Silakan login." }
   }
 
   const logout = () => {
