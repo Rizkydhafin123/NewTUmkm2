@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, Download, Building2, Loader2 } from "lucide-react"
+import { Plus, Search, Trash2, Download, Building2, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { umkmService, type UMKM } from "@/lib/db"
@@ -239,16 +239,6 @@ function DataUMKMContent() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              asChild
-                              className="border-border hover:bg-muted bg-transparent rounded-lg"
-                            >
-                              <Link href={`/umkm/edit/${u.id}`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
