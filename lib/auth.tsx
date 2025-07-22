@@ -1,7 +1,7 @@
 "use client"
 
-import Cookies from "js-cookie"
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { registerUser } from "@/app/actions/auth" // Import the new server action
 
 export interface User {
   id: string
@@ -56,15 +56,6 @@ const ADMIN_USERS = [
 
 const DEFAULT_ADMIN_PASSWORD = "admin"
 
-// Generate UUID v4
-function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === "x" ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -88,13 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Load current user
-    const currentUser = Cookies.get("auth_user")
+    const currentUser = localStorage.getItem("auth_user")
     if (currentUser) {
       try {
         const userData = JSON.parse(currentUser)
         setUser(userData)
       } catch (error) {
-        Cookies.remove("auth_user")
+        localStorage.removeItem("auth_user")
       }
     }
     setIsLoading(false)
@@ -127,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setUser(adminUser)
-          Cookies.set("auth_user", JSON.stringify(adminUser), { expires: 7 })
+          localStorage.setItem("auth_user", JSON.stringify(adminUser))
           return true
         }
       } else {
@@ -139,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (customPassword && password === customPassword) {
             const updatedAdmin = { ...admin, must_change_password: false }
             setUser(updatedAdmin)
-            Cookies.set("auth_user", JSON.stringify(updatedAdmin), { expires: 7 })
+            localStorage.setItem("auth_user", JSON.stringify(updatedAdmin))
             return true
           }
         }
@@ -153,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (foundUser) {
       const { password: _, ...userWithoutPassword } = foundUser
       setUser(userWithoutPassword)
-      Cookies.set("auth_user", JSON.stringify(userWithoutPassword), { expires: 7 })
+      localStorage.setItem("auth_user", JSON.stringify(userWithoutPassword))
       return true
     }
 
@@ -165,32 +156,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: "Username tidak tersedia" }
     }
 
-    const users = JSON.parse(localStorage.getItem("registered_users") || "[]")
-    const existingUser = users.find((u: any) => u.username === userData.username)
+    // Call the server action to register the user in the database
+    const result = await registerUser(userData)
 
-    if (existingUser) {
-      return { success: false, message: "Username sudah digunakan" }
+    // If registration is successful, also update localStorage for client-side consistency
+    if (result.success) {
+      const users = JSON.parse(localStorage.getItem("registered_users") || "[]")
+      const newUser = {
+        id: "temp-id-" + Date.now(), // A temporary ID, as the real ID comes from DB
+        username: userData.username,
+        password: userData.password, // This password should ideally not be stored in localStorage
+        name: userData.name,
+        role: "user" as const,
+        rw: userData.rw,
+        created_at: new Date().toISOString(),
+      }
+      users.push(newUser)
+      localStorage.setItem("registered_users", JSON.stringify(users))
     }
 
-    const newUser = {
-      id: generateUUID(),
-      username: userData.username,
-      password: userData.password,
-      name: userData.name,
-      role: "user" as const,
-      rw: userData.rw,
-      created_at: new Date().toISOString(),
-    }
-
-    users.push(newUser)
-    localStorage.setItem("registered_users", JSON.stringify(users))
-
-    return { success: true, message: "Registrasi berhasil! Silakan login." }
+    return result
   }
 
   const logout = () => {
     setUser(null)
-    Cookies.remove("auth_user")
+    localStorage.removeItem("auth_user")
   }
 
   const changePassword = async (
@@ -226,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         last_password_change: new Date().toISOString(),
       }
       setUser(updatedUser)
-      Cookies.set("auth_user", JSON.stringify(updatedUser), { expires: 7 })
+      localStorage.setItem("auth_user", JSON.stringify(updatedUser))
 
       return { success: true, message: "Password berhasil diubah" }
     } else {
