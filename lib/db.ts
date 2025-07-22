@@ -1,4 +1,6 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless"
+import { generateUUID } from "./utils" // Import generateUUID
+import type { RegisterData } from "./auth" // Import User and RegisterData types
 
 /* ---------- CONFIG & FALLBACK ---------- */
 const DATABASE_URL = process.env.DATABASE_URL
@@ -91,6 +93,65 @@ async function ensureUserExistsInDb(user: any): Promise<void> {
   }
 }
 
+/* ---------- USER SERVICE (NEW) ---------- */
+export const userService = {
+  async createUser(userData: RegisterData): Promise<{ success: boolean; message: string }> {
+    if (!hasNeon) {
+      // Fallback to localStorage for user registration if Neon is not configured
+      const users = JSON.parse(localStorage.getItem("registered_users") || "[]")
+      const existingUser = users.find((u: any) => u.username === userData.username)
+
+      if (existingUser) {
+        return { success: false, message: "Username sudah digunakan" }
+      }
+
+      const newUser = {
+        id: generateUUID(),
+        username: userData.username,
+        password: userData.password,
+        name: userData.name,
+        role: "user" as const,
+        rw: userData.rw,
+        created_at: new Date().toISOString(),
+      }
+
+      users.push(newUser)
+      localStorage.setItem("registered_users", JSON.stringify(users))
+      return { success: true, message: "Registrasi berhasil! Silakan login." }
+    }
+
+    try {
+      const sql = getDbClient()
+
+      const existingUser = await sql`SELECT id FROM users WHERE username = ${userData.username}`
+      if (existingUser.length > 0) {
+        return { success: false, message: "Username sudah digunakan" }
+      }
+
+      const newUserId = generateUUID()
+      await sql`
+        INSERT INTO users (id, username, password, name, role, rw, created_at)
+        VALUES (
+          ${newUserId},
+          ${userData.username},
+          ${userData.password}, -- In a real app, hash this password!
+          ${userData.name},
+          'user',
+          ${userData.rw},
+          NOW()
+        );
+      `
+      console.log("New user registered in Neon DB:", userData.username)
+      return { success: true, message: "Registrasi berhasil! Silakan login." }
+    } catch (error) {
+      console.error("Error creating user in Neon DB:", error)
+      return { success: false, message: "Terjadi kesalahan saat registrasi ke database." }
+    }
+  },
+
+  // Add other user-related functions here if needed (e.g., getUserById, updateUserPassword)
+}
+
 /* ---------- LOCAL STORAGE FALLBACK ---------- */
 const LS_KEY = "umkm"
 
@@ -163,7 +224,7 @@ export const umkmService = {
     }
 
     try {
-      await ensureUserExistsInDb(JSON.parse(localStorage.getItem("auth_user") || "{}"))
+      // ensureUserExistsInDb(JSON.parse(localStorage.getItem("auth_user") || "{}")) // This line is problematic if user is not yet in DB
 
       const sql = getDbClient()
       const [inserted] = await sql`
