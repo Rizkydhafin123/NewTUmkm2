@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { Building2, BarChart3, PieChart, ShieldCheck } from "lucide-react" // Import ShieldCheck icon
+import { Building2, BarChart3, PieChart } from "lucide-react"
 
 export function NavigationWithAuth() {
   const { user } = useAuth()
@@ -11,14 +11,12 @@ export function NavigationWithAuth() {
     { href: "/", label: "Dashboard", icon: Building2 },
     { href: "/umkm", label: "Kelola UMKM", icon: BarChart3 },
     { href: "/laporan", label: "Laporan & Statistik", icon: PieChart },
-    { href: "/cybersecurity", label: "Keamanan Siber", icon: ShieldCheck }, // Add new item
   ]
 
   const userNavItems = [
     { href: "/", label: "Dashboard", icon: Building2 },
     { href: "/umkm", label: "Data UMKM", icon: BarChart3 },
     { href: "/laporan", label: "Laporan", icon: PieChart },
-    { href: "/cybersecurity", label: "Keamanan Siber", icon: ShieldCheck }, // Add new item
   ]
 
   const navItems = user?.role === "admin" ? adminNavItems : userNavItems
