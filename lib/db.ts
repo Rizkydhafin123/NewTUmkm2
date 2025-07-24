@@ -45,7 +45,7 @@ export interface UMKM {
 }
 
 /** Cek apakah string adalah UUID valid */
-function isValidUUID(str: string | undefined | null): str is string {
+export function isValidUUID(str: string | undefined | null): str is string {
   return Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str))
 }
 
