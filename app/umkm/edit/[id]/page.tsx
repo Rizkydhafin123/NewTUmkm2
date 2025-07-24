@@ -1,7 +1,5 @@
 import { umkmService, hasNeon } from "@/lib/db"
 import EditUMKMClient from "./EditUMKMClient"
-import { notFound } from "next/navigation"
-import { ProtectedRoute } from "@/components/protected-route"
 
 // generateStaticParams harus ada untuk output: 'export' pada rute dinamis
 export async function generateStaticParams() {
@@ -21,8 +19,7 @@ export async function generateStaticParams() {
     try {
       console.log("generateStaticParams: Attempting to fetch all UMKM from Neon DB for static paths.")
       // Ambil hanya ID untuk meminimalkan data yang diambil saat build
-      // Catatan: generateStaticParams tidak memiliki akses ke user context, jadi ambil semua UMKM
-      const allUmkm = await umkmService.getAll() // Mengambil semua UMKM tanpa filter user/RW
+      const allUmkm = await umkmService.getAll()
       console.log(`generateStaticParams: Fetched ${allUmkm.length} UMKM items.`)
 
       if (allUmkm.length === 0) {
@@ -51,21 +48,6 @@ interface EditUMKMPageProps {
   }
 }
 
-export default async function EditUMKMPage({ params }: EditUMKMPageProps) {
-  // Fetch UMKM data on the server
-  // Note: In a real app with authentication, you'd also pass the user ID here
-  // to ensure the user has permission to edit this UMKM.
-  // For now, umkmService.getById will handle user filtering if a userId is provided.
-  const umkmData = await umkmService.getById(params.id)
-
-  if (!umkmData) {
-    // If UMKM data is not found, return a 404 page
-    notFound()
-  }
-
-  return (
-    <ProtectedRoute>
-      <EditUMKMClient initialUMKMData={umkmData} />
-    </ProtectedRoute>
-  )
+export default function EditUMKM({ params }: EditUMKMPageProps) {
+  return <EditUMKMClient umkmId={params.id} />
 }
