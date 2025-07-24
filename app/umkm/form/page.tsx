@@ -69,6 +69,12 @@ function UMKMFormContent() {
           if (umkmData) {
             setFormData({
               ...umkmData,
+              kapasitas_produksi: umkmData.kapasitas_produksi || 0,
+              satuan_produksi: umkmData.satuan_produksi || "",
+              periode_operasi: umkmData.periode_operasi || 0,
+              satuan_periode: umkmData.satuan_periode || "bulan",
+              hari_kerja_per_minggu: umkmData.hari_kerja_per_minggu || 0,
+              total_produksi: umkmData.total_produksi || 0,
               tanggal_daftar: umkmData.tanggal_daftar
                 ? new Date(umkmData.tanggal_daftar).toISOString().split("T")[0]
                 : new Date().toISOString().split("T")[0],
@@ -367,82 +373,100 @@ function UMKMFormContent() {
 
               <div className="space-y-6">
                 <div className="border-l-4 border-purple-500 pl-4">
-                  <h3 className="text-xl font-semibold text-foreground">Produk/Layanan</h3>
-                  <p className="text-muted-foreground mt-1">Informasi detail tentang produk atau layanan utama</p>
+                  <h3 className="text-xl font-semibold text-foreground">Kapasitas dan Operasional</h3>
+                  <p className="text-muted-foreground mt-1">Data produksi dan operasional usaha</p>
                 </div>
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="produk" className="text-sm font-medium text-foreground">
-                      Produk/Layanan Utama
+                    <Label htmlFor="kapasitas_produksi" className="text-sm font-medium text-foreground">
+                      Kapasitas Produksi
                     </Label>
                     <Input
-                      id="produk"
-                      value={formData.produk || ""}
-                      onChange={(e) => handleChange("produk", e.target.value)}
-                      placeholder="Contoh: Nasi Goreng, Jilbab Syar'i, Jasa Desain Grafis"
-                      className="border-border focus:border-primary focus:ring-primary rounded-lg"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h3 className="text-xl font-semibold text-foreground">Data Keuangan & Karyawan</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Informasi terkait aspek finansial dan sumber daya manusia
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="modal_awal" className="text-sm font-medium text-foreground">
-                      Modal Awal (Rp)
-                    </Label>
-                    <Input
-                      id="modal_awal"
+                      id="kapasitas_produksi"
                       type="number"
-                      value={formData.modal_awal || 0}
-                      onChange={(e) => handleChange("modal_awal", Number(e.target.value))}
-                      placeholder="Contoh: 10000000"
+                      value={formData.kapasitas_produksi || 0}
+                      onChange={(e) => handleChange("kapasitas_produksi", Number(e.target.value))}
+                      placeholder="Jumlah"
                       className="border-border focus:border-primary focus:ring-primary rounded-lg"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="rab" className="text-sm font-medium text-foreground">
-                      Rencana Anggaran Biaya (Rp)
+                    <Label htmlFor="satuan_produksi" className="text-sm font-medium text-foreground">
+                      Satuan Produksi
+                    </Label>
+                    <Select
+                      value={formData.satuan_produksi || ""}
+                      onValueChange={(value) => handleChange("satuan_produksi", value)}
+                    >
+                      <SelectTrigger className="border-border focus:border-primary focus:ring-primary rounded-lg">
+                        <SelectValue placeholder="Pilih satuan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pcs">Pcs</SelectItem>
+                        <SelectItem value="unit">Unit</SelectItem>
+                        <SelectItem value="kg">Kg</SelectItem>
+                        <SelectItem value="liter">Liter</SelectItem>
+                        <SelectItem value="porsi">Porsi</SelectItem>
+                        <SelectItem value="meter">Meter</SelectItem>
+                        <SelectItem value="lainnya">Lainnya</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="total_produksi" className="text-sm font-medium text-foreground">
+                      Total Produksi per Periode
                     </Label>
                     <Input
-                      id="rab"
+                      id="total_produksi"
                       type="number"
-                      value={formData.rab || 0}
-                      onChange={(e) => handleChange("rab", Number(e.target.value))}
-                      placeholder="Contoh: 7000000"
+                      value={formData.total_produksi || 0}
+                      onChange={(e) => handleChange("total_produksi", Number(e.target.value))}
+                      placeholder="Total produksi"
                       className="border-border focus:border-primary focus:ring-primary rounded-lg"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="jumlah_karyawan" className="text-sm font-medium text-foreground">
-                      Jumlah Karyawan
+                    <Label htmlFor="periode_operasi" className="text-sm font-medium text-foreground">
+                      Periode Operasi
                     </Label>
                     <Input
-                      id="jumlah_karyawan"
+                      id="periode_operasi"
                       type="number"
-                      value={formData.jumlah_karyawan || 0}
-                      onChange={(e) => handleChange("jumlah_karyawan", Number(e.target.value))}
-                      placeholder="Contoh: 2"
+                      value={formData.periode_operasi || 0}
+                      onChange={(e) => handleChange("periode_operasi", Number(e.target.value))}
+                      placeholder="Jumlah periode"
                       className="border-border focus:border-primary focus:ring-primary rounded-lg"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="target_pendapatan" className="text-sm font-medium text-foreground">
-                      Target Pendapatan (Rp)
+                    <Label htmlFor="satuan_periode" className="text-sm font-medium text-foreground">
+                      Satuan Periode
+                    </Label>
+                    <Select
+                      value={formData.satuan_periode || "bulan"}
+                      onValueChange={(value) => handleChange("satuan_periode", value)}
+                    >
+                      <SelectTrigger className="border-border focus:border-primary focus:ring-primary rounded-lg">
+                        <SelectValue placeholder="Pilih satuan periode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hari">Hari</SelectItem>
+                        <SelectItem value="minggu">Minggu</SelectItem>
+                        <SelectItem value="bulan">Bulan</SelectItem>
+                        <SelectItem value="tahun">Tahun</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hari_kerja_per_minggu" className="text-sm font-medium text-foreground">
+                      Hari Kerja per Minggu
                     </Label>
                     <Input
-                      id="target_pendapatan"
+                      id="hari_kerja_per_minggu"
                       type="number"
-                      value={formData.target_pendapatan || 0}
-                      onChange={(e) => handleChange("target_pendapatan", Number(e.target.value))}
-                      placeholder="Contoh: 15000000"
+                      value={formData.hari_kerja_per_minggu || 0}
+                      onChange={(e) => handleChange("hari_kerja_per_minggu", Number(e.target.value))}
+                      placeholder="Jumlah hari"
                       className="border-border focus:border-primary focus:ring-primary rounded-lg"
                     />
                   </div>
