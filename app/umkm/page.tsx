@@ -245,7 +245,7 @@ function DataUMKMContent() {
                               asChild
                               className="rounded-lg border-border hover:bg-muted bg-transparent"
                             >
-                              <Link href={`/umkm/edit/${u.id}`}>
+                              <Link href={`/umkm/form?id=${u.id}`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
