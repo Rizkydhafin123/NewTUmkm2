@@ -50,6 +50,7 @@ function UMKMFormContent() {
     jumlah_karyawan: 0,
     status: "Aktif",
     tanggal_daftar: new Date().toISOString().split("T")[0],
+    user_id: "", // Add user_id to formData state
   })
 
   useEffect(() => {
@@ -65,7 +66,15 @@ function UMKMFormContent() {
         setLoading(true)
         setError(null)
         try {
-          const umkmData = await umkmService.getById(umkmId, user.id)
+          let umkmData: UMKM | null = null
+          if (user.role === "admin") {
+            // Admin can fetch any UMKM by ID
+            umkmData = await umkmService.getById(umkmId)
+          } else {
+            // Regular user can only fetch their own UMKM
+            umkmData = await umkmService.getById(umkmId, user.id)
+          }
+
           if (umkmData) {
             setFormData({
               ...umkmData,
@@ -78,6 +87,7 @@ function UMKMFormContent() {
               tanggal_daftar: umkmData.tanggal_daftar
                 ? new Date(umkmData.tanggal_daftar).toISOString().split("T")[0]
                 : new Date().toISOString().split("T")[0],
+              user_id: umkmData.user_id, // Ensure user_id is loaded into formData
             })
           } else {
             setError("Data UMKM tidak ditemukan atau Anda tidak memiliki akses.")
@@ -140,11 +150,13 @@ function UMKMFormContent() {
       }
 
       if (umkmId) {
-        // Update existing UMKM
-        await umkmService.update(umkmId, umkmPayload, user.id)
+        // When updating, use the original user_id of the UMKM
+        // If for some reason user_id is not in formData (e.g., new entry before save), fallback to current user.id
+        const targetUserId = formData.user_id || user.id
+        await umkmService.update(umkmId, umkmPayload, targetUserId)
         alert("Data UMKM berhasil diperbarui!")
       } else {
-        // Create new UMKM
+        // Create new UMKM, use current user's ID
         await umkmService.create(umkmPayload, user.id)
         alert("UMKM berhasil didaftarkan!")
       }
