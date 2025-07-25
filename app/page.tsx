@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, Plus, TrendingUp, Users, DollarSign, BarChart3, PieChart, Loader2 } from "lucide-react"
+import { Building2, Plus, TrendingUp, Users, BarChart3, PieChart, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { umkmService, hasNeon, type UMKM } from "@/lib/db"
 import { MigrationBanner } from "@/components/migration-banner"
@@ -28,8 +28,6 @@ function DashboardContent() {
     totalUMKM: 0,
     umkmAktif: 0,
     umkmTidakAktif: 0,
-    totalRAB: 0,
-    totalModal: 0,
     totalKaryawan: 0,
     jenisUsahaStats: {} as Record<string, number>,
     kategoriStats: {} as Record<string, number>,
@@ -55,8 +53,6 @@ function DashboardContent() {
 
       const umkmAktif = umkm.filter((u) => u.status === "Aktif").length
       const umkmTidakAktif = umkm.filter((u) => u.status !== "Aktif").length
-      const totalRAB = umkm.reduce((sum, u) => sum + (u.rab || 0), 0)
-      const totalModal = umkm.reduce((sum, u) => sum + (u.modal_awal || 0), 0)
       const totalKaryawan = umkm.reduce((sum, u) => sum + (u.jumlah_karyawan || 0), 0)
 
       const jenisUsahaStats = umkm.reduce((acc: Record<string, number>, u) => {
@@ -79,8 +75,6 @@ function DashboardContent() {
         totalUMKM: umkm.length,
         umkmAktif,
         umkmTidakAktif,
-        totalRAB,
-        totalModal,
         totalKaryawan,
         jenisUsahaStats,
         kategoriStats,
@@ -176,7 +170,9 @@ function DashboardContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {" "}
+          {/* Adjusted to 3 columns */}
           <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -189,7 +185,6 @@ function DashboardContent() {
               <p className="text-sm text-muted-foreground mt-1">Usaha terdaftar</p>
             </CardContent>
           </Card>
-
           <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">UMKM Aktif</CardTitle>
@@ -200,20 +195,7 @@ function DashboardContent() {
               <p className="text-sm text-muted-foreground mt-1">Beroperasi aktif</p>
             </CardContent>
           </Card>
-
-          <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Modal</CardTitle>
-              <DollarSign className="h-5 w-5 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-purple-600">
-                {stats.totalModal > 0 ? `${(stats.totalModal / 1000000).toFixed(1)}M` : "0"}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Rupiah investasi</p>
-            </CardContent>
-          </Card>
-
+          {/* Total Modal card removed */}
           <Card className="bg-card shadow-lg hover:shadow-xl transition-shadow border border-border rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Penyerapan Tenaga Kerja</CardTitle>
@@ -353,43 +335,7 @@ function DashboardContent() {
           </Card>
         </div>
 
-        {stats.totalUMKM > 0 && (
-          <div className="mt-8">
-            <Card className="bg-card shadow-lg border border-border rounded-xl">
-              <CardHeader>
-                <CardTitle className="text-foreground">
-                  Ringkasan Status UMKM {user?.role === "admin" ? `RW ${user.rw}` : ""}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Gambaran umum kondisi UMKM di wilayah Anda
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{stats.umkmAktif}</div>
-                    <div className="text-sm text-green-700 mt-1">UMKM Aktif</div>
-                    <div className="text-xs text-green-600 mt-1">
-                      {stats.totalUMKM > 0 ? Math.round((stats.umkmAktif / stats.totalUMKM) * 100) : 0}% dari total
-                    </div>
-                  </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold text-muted-foreground">{stats.umkmTidakAktif}</div>
-                    <div className="text-sm text-foreground mt-1">Tidak Aktif</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {stats.totalUMKM > 0 ? Math.round((stats.umkmTidakAktif / stats.totalUMKM) * 100) : 0}% dari total
-                    </div>
-                  </div>
-                  <div className="text-center p-4 bg-primary/10 rounded-lg">
-                    <div className="text-2xl font-bold text-primary">Rp {(stats.totalRAB / 1000000).toFixed(1)}M</div>
-                    <div className="text-sm text-primary/90 mt-1">Total RAB</div>
-                    <div className="text-xs text-primary/80 mt-1">Rencana anggaran biaya</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Ringkasan Status UMKM section removed */}
       </main>
     </div>
   )
