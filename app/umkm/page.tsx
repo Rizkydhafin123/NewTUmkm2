@@ -90,10 +90,12 @@ function DataUMKMContent() {
   }
 
   const exportToCSV = () => {
-    const headers = ["Nama Usaha", "Pemilik", "Jenis Usaha", "Nomor HP", "Status"]
+    const headers = ["Nama Usaha", "Pemilik", "Jenis Usaha", "NIB", "Produk", "Nomor HP", "Status"]
     const csvContent = [
       headers.join(","),
-      ...filteredUmkm.map((u) => [u.nama_usaha, u.pemilik, u.jenis_usaha, u.no_hp || "", u.status].join(",")),
+      ...filteredUmkm.map((u) =>
+        [u.nama_usaha, u.pemilik, u.jenis_usaha, u.nib || "", u.produk_dijual || "", u.no_hp || "", u.status].join(","),
+      ),
     ].join("\n")
 
     const blob = new Blob([csvContent], { type: "text/csv" })
@@ -192,6 +194,8 @@ function DataUMKMContent() {
                     <TableHead className="font-semibold text-foreground">Nama Usaha</TableHead>
                     <TableHead className="font-semibold text-foreground">Pemilik</TableHead>
                     <TableHead className="font-semibold text-foreground">Jenis Usaha</TableHead>
+                    <TableHead className="font-semibold text-foreground">NIB</TableHead>
+                    <TableHead className="font-semibold text-foreground">Produk</TableHead>
                     <TableHead className="font-semibold text-foreground">Nomor HP</TableHead>
                     <TableHead className="font-semibold text-foreground">Status</TableHead>
                     <TableHead className="font-semibold text-foreground">Aksi</TableHead>
@@ -200,7 +204,7 @@ function DataUMKMContent() {
                 <TableBody>
                   {filteredUmkm.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12">
+                      <TableCell colSpan={8} className="text-center py-12">
                         <Building2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
                         <p className="text-muted-foreground text-lg">Tidak ada data UMKM</p>
                         <p className="text-muted-foreground/80 text-sm mt-1">Mulai dengan mendaftarkan UMKM pertama</p>
@@ -215,6 +219,13 @@ function DataUMKMContent() {
                           <Badge variant="outline" className="border-primary/20 text-primary bg-primary/10 rounded-md">
                             {u.jenis_usaha}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{u.nib || "-"}</TableCell>
+                        <TableCell
+                          className="text-muted-foreground max-w-[200px] truncate"
+                          title={u.produk_dijual || "-"}
+                        >
+                          {u.produk_dijual || "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{u.no_hp || "-"}</TableCell>
                         <TableCell>
