@@ -36,6 +36,8 @@ function UMKMFormContent() {
     kategori_usaha: "",
     deskripsi_usaha: "",
     produk: "",
+    nib: "",
+    produk_dijual: "",
     kapasitas_produksi: 0,
     satuan_produksi: "",
     periode_operasi: 0,
@@ -84,6 +86,8 @@ function UMKMFormContent() {
               satuan_periode: umkmData.satuan_periode || "bulan",
               hari_kerja_per_minggu: umkmData.hari_kerja_per_minggu || 0,
               total_produksi: umkmData.total_produksi || 0,
+              nib: umkmData.nib || "",
+              produk_dijual: umkmData.produk_dijual || "",
               tanggal_daftar: umkmData.tanggal_daftar
                 ? new Date(umkmData.tanggal_daftar).toISOString().split("T")[0]
                 : new Date().toISOString().split("T")[0],
@@ -133,6 +137,8 @@ function UMKMFormContent() {
         kategori_usaha: formData.kategori_usaha || undefined,
         deskripsi_usaha: formData.deskripsi_usaha || undefined,
         produk: formData.produk || undefined,
+        nib: formData.nib || undefined,
+        produk_dijual: formData.produk_dijual || undefined,
         kapasitas_produksi: formData.kapasitas_produksi || 0,
         satuan_produksi: formData.satuan_produksi || undefined,
         periode_operasi: formData.periode_operasi || 0,
@@ -312,6 +318,19 @@ function UMKMFormContent() {
                     </Select>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="nib" className="text-sm font-medium text-foreground">
+                      NIB (Nomor Induk Berusaha)
+                    </Label>
+                    <Input
+                      id="nib"
+                      value={formData.nib || ""}
+                      onChange={(e) => handleChange("nib", e.target.value)}
+                      placeholder="Masukkan NIB"
+                      className="border-border focus:border-primary focus:ring-primary rounded-lg"
+                    />
+                  </div>
+
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="alamat_usaha" className="text-sm font-medium text-foreground">
                       Alamat Usaha
@@ -378,6 +397,19 @@ function UMKMFormContent() {
                       onChange={(e) => handleChange("deskripsi_usaha", e.target.value)}
                       placeholder="Jelaskan produk/jasa yang ditawarkan, target pasar, dll"
                       className="min-h-[100px] border-border focus:border-primary focus:ring-primary rounded-lg"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="produk_dijual" className="text-sm font-medium text-foreground">
+                      Produk yang Dijual
+                    </Label>
+                    <Textarea
+                      id="produk_dijual"
+                      value={formData.produk_dijual || ""}
+                      onChange={(e) => handleChange("produk_dijual", e.target.value)}
+                      placeholder="Sebutkan produk atau jasa yang dijual"
+                      className="min-h-[80px] border-border focus:border-primary focus:ring-primary rounded-lg"
                     />
                   </div>
                 </div>
