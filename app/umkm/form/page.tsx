@@ -21,7 +21,7 @@ function UMKMFormContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const umkmId = searchParams.get("id") // Get ID from URL for editing
-  const { user } = useAuth()
+  const { user, loading: userLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -32,12 +32,10 @@ function UMKMFormContent() {
     nik_pemilik: "",
     no_hp: "",
     alamat_usaha: "",
-    jenis_usaha: "",
+    jenis_usaha: "Kuliner", // Default value
     kategori_usaha: "",
     deskripsi_usaha: "",
-    produk: "",
-    nib: "",
-    produk_dijual: "",
+    produk: "", // Tambahkan produk di sini
     kapasitas_produksi: 0,
     satuan_produksi: "",
     periode_operasi: 0,
@@ -50,19 +48,22 @@ function UMKMFormContent() {
     modal_awal: 0,
     target_pendapatan: 0,
     jumlah_karyawan: 0,
-    status: "Aktif",
+    status: "Aktif", // Default value
     tanggal_daftar: new Date().toISOString().split("T")[0],
     user_id: "", // Add user_id to formData state
+    nib: "", // Tambahkan NIB di sini
   })
 
   useEffect(() => {
-    const fetchUMKM = async () => {
-      if (!user?.id) {
-        setError("Anda harus login untuk mengakses fitur ini.")
-        setLoading(false)
-        return
-      }
+    if (userLoading) return
 
+    if (!user) {
+      setError("Anda harus login untuk mengakses fitur ini.")
+      setLoading(false)
+      return
+    }
+
+    const fetchUMKM = async () => {
       if (umkmId) {
         // Editing existing UMKM
         setLoading(true)
@@ -86,12 +87,18 @@ function UMKMFormContent() {
               satuan_periode: umkmData.satuan_periode || "bulan",
               hari_kerja_per_minggu: umkmData.hari_kerja_per_minggu || 0,
               total_produksi: umkmData.total_produksi || 0,
-              nib: umkmData.nib || "",
-              produk_dijual: umkmData.produk_dijual || "",
+              rab: umkmData.rab || 0,
+              biaya_tetap: umkmData.biaya_tetap || 0,
+              biaya_variabel: umkmData.biaya_variabel || 0,
+              modal_awal: umkmData.modal_awal || 0,
+              target_pendapatan: umkmData.target_pendapatan || 0,
+              jumlah_karyawan: umkmData.jumlah_karyawan || 0,
               tanggal_daftar: umkmData.tanggal_daftar
                 ? new Date(umkmData.tanggal_daftar).toISOString().split("T")[0]
                 : new Date().toISOString().split("T")[0],
               user_id: umkmData.user_id, // Ensure user_id is loaded into formData
+              nib: umkmData.nib || "", // Pastikan NIB dimuat
+              produk: umkmData.produk || "", // Pastikan Produk dimuat
             })
           } else {
             setError("Data UMKM tidak ditemukan atau Anda tidak memiliki akses.")
@@ -109,7 +116,7 @@ function UMKMFormContent() {
     }
 
     fetchUMKM()
-  }, [umkmId, user])
+  }, [umkmId, user, userLoading])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -136,9 +143,7 @@ function UMKMFormContent() {
         jenis_usaha: formData.jenis_usaha!,
         kategori_usaha: formData.kategori_usaha || undefined,
         deskripsi_usaha: formData.deskripsi_usaha || undefined,
-        produk: formData.produk || undefined,
-        nib: formData.nib || undefined,
-        produk_dijual: formData.produk_dijual || undefined,
+        produk: formData.produk || undefined, // Tambahkan produk ke payload
         kapasitas_produksi: formData.kapasitas_produksi || 0,
         satuan_produksi: formData.satuan_produksi || undefined,
         periode_operasi: formData.periode_operasi || 0,
@@ -153,6 +158,7 @@ function UMKMFormContent() {
         jumlah_karyawan: formData.jumlah_karyawan || 0,
         status: formData.status!,
         tanggal_daftar: formData.tanggal_daftar || new Date().toISOString(),
+        nib: formData.nib || undefined, // Tambahkan NIB ke payload
       }
 
       if (umkmId) {
@@ -293,6 +299,20 @@ function UMKMFormContent() {
                     />
                   </div>
 
+                  {/* Input NIB baru */}
+                  <div className="space-y-2">
+                    <Label htmlFor="nib" className="text-sm font-medium text-foreground">
+                      Nomor Induk Berusaha (NIB)
+                    </Label>
+                    <Input
+                      id="nib"
+                      value={formData.nib || ""}
+                      onChange={(e) => handleChange("nib", e.target.value)}
+                      placeholder="Contoh: 123456789012345"
+                      className="border-border focus:border-primary focus:ring-primary rounded-lg"
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="jenis_usaha" className="text-sm font-medium text-foreground">
                       Jenis Usaha *
@@ -316,19 +336,6 @@ function UMKMFormContent() {
                         <SelectItem value="Lainnya">Lainnya</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="nib" className="text-sm font-medium text-foreground">
-                      NIB (Nomor Induk Berusaha)
-                    </Label>
-                    <Input
-                      id="nib"
-                      value={formData.nib || ""}
-                      onChange={(e) => handleChange("nib", e.target.value)}
-                      placeholder="Masukkan NIB"
-                      className="border-border focus:border-primary focus:ring-primary rounded-lg"
-                    />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
@@ -397,19 +404,6 @@ function UMKMFormContent() {
                       onChange={(e) => handleChange("deskripsi_usaha", e.target.value)}
                       placeholder="Jelaskan produk/jasa yang ditawarkan, target pasar, dll"
                       className="min-h-[100px] border-border focus:border-primary focus:ring-primary rounded-lg"
-                    />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="produk_dijual" className="text-sm font-medium text-foreground">
-                      Produk yang Dijual
-                    </Label>
-                    <Textarea
-                      id="produk_dijual"
-                      value={formData.produk_dijual || ""}
-                      onChange={(e) => handleChange("produk_dijual", e.target.value)}
-                      placeholder="Sebutkan produk atau jasa yang dijual"
-                      className="min-h-[80px] border-border focus:border-primary focus:ring-primary rounded-lg"
                     />
                   </div>
                 </div>
