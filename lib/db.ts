@@ -42,6 +42,7 @@ export interface UMKM {
   created_at?: string
   updated_at?: string
   user_id?: string
+  nib?: string
 }
 
 /** Cek apakah string adalah UUID valid */
@@ -172,7 +173,7 @@ export const umkmService = {
         deskripsi_usaha, produk, kapasitas_produksi, satuan_produksi, periode_operasi,
         satuan_periode, hari_kerja_per_minggu, total_produksi, rab, biaya_tetap,
         biaya_variabel, modal_awal, target_pendapatan, jumlah_karyawan, status,
-        tanggal_daftar, user_id
+        tanggal_daftar, user_id, nib
       ) VALUES (
         ${dataWithUser.nama_usaha}, ${dataWithUser.pemilik}, ${dataWithUser.nik_pemilik || null},
         ${dataWithUser.no_hp || null}, ${dataWithUser.alamat_usaha || null}, ${dataWithUser.jenis_usaha},
@@ -184,7 +185,8 @@ export const umkmService = {
         ${dataWithUser.biaya_tetap || 0}, ${dataWithUser.biaya_variabel || 0},
         ${dataWithUser.modal_awal || 0}, ${dataWithUser.target_pendapatan || 0},
         ${dataWithUser.jumlah_karyawan || 0}, ${dataWithUser.status},
-        ${dataWithUser.tanggal_daftar || new Date().toISOString()}, ${dataWithUser.user_id}
+        ${dataWithUser.tanggal_daftar || new Date().toISOString()}, ${dataWithUser.user_id},
+        ${dataWithUser.nib || null}
       ) RETURNING *;
     `
       return inserted as UMKM
@@ -243,7 +245,8 @@ export const umkmService = {
         target_pendapatan = ${payload.target_pendapatan || 0},
         jumlah_karyawan = ${payload.jumlah_karyawan || 0},
         status = ${payload.status},
-        updated_at = NOW()
+        updated_at = NOW(),
+        nib = ${payload.nib || null}
       WHERE id = ${id} AND user_id = ${userId}
       RETURNING *;
     `
