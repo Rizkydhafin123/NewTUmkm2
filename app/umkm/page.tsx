@@ -34,7 +34,9 @@ function DataUMKMContent() {
         u.nama_usaha.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.pemilik.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.jenis_usaha.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.no_hp && u.no_hp.includes(searchTerm)),
+        (u.no_hp || "").includes(searchTerm) || // Filter no_hp lebih robust
+        (u.nib || "").toLowerCase().includes(searchTerm.toLowerCase()) || // Filter NIB lebih robust
+        (u.produk || "").toLowerCase().includes(searchTerm.toLowerCase()), // Tambahkan filter produk
     )
 
     if (filterJenis !== "semua") {
@@ -90,12 +92,12 @@ function DataUMKMContent() {
   }
 
   const exportToCSV = () => {
-    const headers = ["Nama Usaha", "Pemilik", "Jenis Usaha", "NIB", "Produk", "Nomor HP", "Status"]
+    const headers = ["Nama Usaha", "Pemilik", "Jenis Usaha", "Nomor HP", "NIB", "Produk", "Status"] // Tambahkan NIB dan Produk ke header
     const csvContent = [
       headers.join(","),
       ...filteredUmkm.map((u) =>
-        [u.nama_usaha, u.pemilik, u.jenis_usaha, u.nib || "", u.produk_dijual || "", u.no_hp || "", u.status].join(","),
-      ),
+        [u.nama_usaha, u.pemilik, u.jenis_usaha, u.no_hp || "", u.nib || "", u.produk || "", u.status].join(","),
+      ), // Tambahkan NIB dan Produk ke data
     ].join("\n")
 
     const blob = new Blob([csvContent], { type: "text/csv" })
@@ -132,7 +134,7 @@ function DataUMKMContent() {
           Export Data
         </Button>
         <Button size="lg" asChild className="bg-primary hover:bg-primary/90 rounded-lg">
-          <Link href="/umkm/tambah">
+          <Link href="/umkm/form">
             <Plus className="h-5 w-5 mr-2" />
             Tambah UMKM
           </Link>
@@ -194,9 +196,9 @@ function DataUMKMContent() {
                     <TableHead className="font-semibold text-foreground">Nama Usaha</TableHead>
                     <TableHead className="font-semibold text-foreground">Pemilik</TableHead>
                     <TableHead className="font-semibold text-foreground">Jenis Usaha</TableHead>
+                    <TableHead className="font-semibold text-foreground">Nomor HP</TableHead>
                     <TableHead className="font-semibold text-foreground">NIB</TableHead>
                     <TableHead className="font-semibold text-foreground">Produk</TableHead>
-                    <TableHead className="font-semibold text-foreground">Nomor HP</TableHead>
                     <TableHead className="font-semibold text-foreground">Status</TableHead>
                     <TableHead className="font-semibold text-foreground">Aksi</TableHead>
                   </TableRow>
@@ -220,14 +222,9 @@ function DataUMKMContent() {
                             {u.jenis_usaha}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{u.nib || "-"}</TableCell>
-                        <TableCell
-                          className="text-muted-foreground max-w-[200px] truncate"
-                          title={u.produk_dijual || "-"}
-                        >
-                          {u.produk_dijual || "-"}
-                        </TableCell>
                         <TableCell className="text-muted-foreground">{u.no_hp || "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{u.nib || "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{u.produk || "-"}</TableCell>
                         <TableCell>
                           <Badge
                             variant={
