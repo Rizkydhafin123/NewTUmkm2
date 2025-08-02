@@ -406,6 +406,19 @@ function UMKMFormContent() {
                       className="min-h-[100px] border-border focus:border-primary focus:ring-primary rounded-lg"
                     />
                   </div>
+                  {/* Tambahkan input Produk/Jasa yang Ditawarkan di sini */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="produk" className="text-sm font-medium text-foreground">
+                      Produk/Jasa yang Ditawarkan
+                    </Label>
+                    <Textarea
+                      id="produk"
+                      value={formData.produk || ""}
+                      onChange={(e) => handleChange("produk", e.target.value)}
+                      placeholder="Contoh: Nasi Gudeg, Soto Ayam, Gado-gado"
+                      className="min-h-[80px] border-border focus:border-primary focus:ring-primary rounded-lg"
+                    />
+                  </div>
                 </div>
               </div>
 
